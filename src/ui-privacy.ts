@@ -61,6 +61,12 @@ export function securityPanel(ctx:SecurityCtx){
    </div>`:''}
 
    <div class="control">
+    <div><b>Read the privacy notice</b>
+     <p>What is stored, what leaves this device, and what we could never see even if asked.</p></div>
+    <button class="btn ghost" data-page="Privacy">${icon('shield-check')}Open</button>
+   </div>
+
+   <div class="control">
     <div><b>Lock right now</b>
      <p>Clears the screen and forgets the key. Use it when you walk away.</p></div>
     <button class="btn ghost" data-action="lock" ${ctx.demo?'disabled':''}>${icon('lock-keyhole')}Lock</button>

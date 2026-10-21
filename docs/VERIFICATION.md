@@ -83,6 +83,20 @@
 - No real PDF has been transcribed, so the rate at which the balance chain catches a reader's mistakes is still unknown. That number decides whether the feature is worth offering.
 - The plain-language declarations are clearer, but no actual freelancer has been asked whether they can now answer them honestly. That was the original problem and it remains unmeasured.
 
+## Added 21 October 2026 — the interface rebuilt around four destinations
+
+- **Nine destinations became four.** Today, Money, Tax, Filing Pack, plus Settings and the Privacy notice. Income, Money out, Invoices and Statements are tabs inside Money with counts on the tabs. Old route names still resolve through a route table, so every existing button and link keeps working — verified in the browser: a legacy `Reports` link lands on Filing Pack, and a legacy `Invoices` link lands on Money with the Invoices tab already active.
+- **One Add sheet** replaces navigate-then-act, reachable from any page and from the middle of the phone bar. All five choices verified to open their form: I got paid, I spent money on work, Send an invoice, Import a bank statement, Add an account.
+- **The three main tables now stack into labelled cards on a phone.** Income, expenses and invoices previously scrolled sideways. Verified at 375 px: no horizontal overflow anywhere, and the income table no longer scrolls within itself.
+- Each Money tab verified to render its content: 8 income rows, 2 expenses, 2 invoices, 2 reconciliation cards and the review queue.
+- **A regression caught and fixed during this work:** collapsing the navigation left the Privacy notice with no entry point, so it was unreachable. It now has a footer link on every page, the sidebar trust card points at it, and Settings has a row for it.
+
+### Not verified for this change
+
+- The structure is a judgement about how people think about their money, not a measured result. Nobody has been watched using either version, so "easier" remains an argument rather than a finding.
+- The phone layout was checked at 375 x 812 in a desktop engine, not on a real device.
+- No accessibility pass has been done on the new tabs or the Add sheet — keyboard order and screen-reader labelling of the tab bar are unexamined.
+
 ## Limits
 
 The five-minute lock is implemented and reviewed; a full timed idle soak is not recorded. Receipt upload uses file MIME/signature/size validation, but all file types have not been exercised in the browser. Downloaded backups are verified in Node crypto tests and browser restoration; arbitrary malformed backup fuzzing is not exhaustive. Live FX depends on provider/network availability and is not a price guarantee. No real bank transfer, FBR submission, email, subscription payment or government registry verification was performed.

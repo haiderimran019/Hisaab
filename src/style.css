@@ -352,3 +352,56 @@ tr.duplicate,tr.excluded{opacity:.62}
 .check-label.wide-check span{display:grid;gap:4px}
 .check-label.wide-check b{font-weight:500;color:#eceef2;font-size:12px;line-height:1.5}
 .check-label.wide-check small{color:var(--muted);font-size:10.5px;line-height:1.65}
+
+/* ── Four destinations, one Add ───────────────────────────────────────────── */
+.money-head{margin-bottom:18px}
+.money-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);
+ border:1px solid var(--line);border-radius:3px;overflow:hidden;margin-bottom:16px}
+.money-summary>div{background:var(--panel);padding:15px 17px;display:grid;gap:5px}
+.money-summary span{font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:500}
+.money-summary b{font-size:19px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{display:flex;align-items:center;gap:8px;padding:12px 15px;background:transparent;border:0;
+ color:var(--muted);font-size:11.5px;font-weight:500;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab:hover{color:#e4e5ea}
+.tab.active{color:#f1f1f2;border-bottom-color:var(--orange)}
+.tab svg{width:15px;height:15px}
+.tab-count{font-style:normal;font-size:9.5px;background:#26272c;color:var(--muted);border-radius:2px;padding:2px 6px;font-variant-numeric:tabular-nums}
+.tab.active .tab-count{background:#2f3036;color:#e4e5ea}
+.tab-count.waiting{background:var(--orange-dark);color:var(--orange)}
+
+.add-list{display:grid;gap:2px}
+.add-choice{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:15px 4px;
+ background:transparent;border:0;border-top:1px solid var(--line);color:inherit;min-height:66px}
+.add-choice:first-child{border-top:0}
+.add-choice:hover{background:#1b1c1f}
+.add-choice b{display:block;font-size:13px;font-weight:500;margin-bottom:3px}
+.add-choice small{display:block;color:var(--muted);font-size:10.5px;line-height:1.6}
+.add-choice>span:nth-child(2){flex:1;min-width:0}
+.add-choice>svg{width:15px;height:15px;color:var(--muted);flex:0 0 auto}
+.add-mark{width:36px;height:36px;border-radius:3px;display:grid;place-items:center;background:#232429;color:var(--orange);flex:0 0 auto}
+.add-mark svg{width:17px;height:17px}
+
+/* The phone bar carries two destinations either side of one Add. */
+@media(max-width:760px){
+ .mobile-bottom{padding:7px 8px calc(7px + env(safe-area-inset-bottom))}
+ .tab-add{display:grid;place-items:center;width:46px;height:46px;border-radius:3px;background:var(--orange);
+  color:#17120e;border:0;margin-top:-16px;box-shadow:0 6px 18px #0007}
+ .tab-add svg{width:22px;height:22px}
+ .money-summary{grid-template-columns:1fr;gap:1px}
+ .money-summary>div{padding:13px 15px;display:flex;align-items:baseline;justify-content:space-between}
+ .money-summary b{font-size:17px}
+ .tab{padding:11px 13px;font-size:11px}
+ .tab span{display:none}
+ .tab.active span{display:inline}
+}
+@media(min-width:761px){.tab-add{display:none}}
+@media(max-width:760px){
+ /* The page-title Add duplicates the bar button on a phone. */
+ .title-actions .btn[data-action="add"]{display:none}
+ /* Card rows keep their actions on one line at the foot of the card. */
+ table.cards td.row-actions,table.cards td:last-child{display:flex;gap:7px;padding-top:11px!important}
+ table.cards td.row-actions::before{content:''}
+ .client-cell{display:flex;gap:10px;align-items:center}
+}

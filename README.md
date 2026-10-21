@@ -25,16 +25,23 @@ npm run preview
 
 ## How it feels to use
 
-Home is a guide, not a dashboard. It tells you which of six steps you are on, in
-one sentence, with one button: tell us about your work → add your accounts →
+**Four places, and one Add.** Today, Money, Tax, Filing Pack. Invoices and
+statement lines used to be top-level navigation; they are tabs inside Money now,
+because those are an accountant's categories, not the ones a person arrives with.
+
+**Today is a guide, not a dashboard.** It tells you which of six steps you are on,
+in one sentence, with one button: tell us about your work → add your accounts →
 import statements → say what each payment was → make it balance → get your Filing
 Pack. The three money figures are in words people say out loud — *what reached
-you*, *lost to fees*, *keep aside for tax* — and you can blur them with one switch
-when you are working in public.
+you*, *lost to fees*, *keep aside for tax* — and one switch blurs them for working
+in public.
 
-It is built for a phone first. Wide tables become stacked cards, the bottom bar
-carries the five screens people actually open with a badge for what is waiting,
-and every control is thumb-sized.
+**One Add, reachable everywhere**, instead of navigate-then-act. It asks in plain
+words: *I got paid · I spent money on work · Send an invoice · Import a bank
+statement · Add an account*. On a phone it is the button in the middle of the bar.
+
+Built for a phone first: every wide table becomes stacked labelled cards rather
+than something to scroll sideways, and every control is thumb-sized.
 
 ## The paid workflow
 
