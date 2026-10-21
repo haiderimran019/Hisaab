@@ -1,0 +1,4 @@
+# Visual contract
+Operate mode. The supplied reference fixes the visual direction: black/charcoal, orange, white and Poppins. Desktop composition: persistent left rail, quiet utility header, ledger-first overview, wide cash-flow plot, narrow tax reserve column. Mobile: compact header, two-column totals, stacked chart and tax panel, horizontally scrollable ledger and bottom navigation. Panel boundaries use a single subtle border. Consistent Lucide stroke icons. Warm orange is reserved for selected navigation, meaningful chart series and primary actions; green means recorded/received. No illustrative stock art. All example amounts explicitly belong to Demo workspace.
+
+The concept seed ran degraded because its remote roll service was unavailable; user-pinned theme takes precedence. Seed reference seed:d9a43acf426afd5c. No generated boards or unchosen designs are represented as approved.

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env*
+!.env.example
+*.backup.json
+.DS_Store
+.impeccable/
+.sites-checkout/
+.openai/
