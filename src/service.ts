@@ -17,6 +17,11 @@ import type {LicenseStatus} from './license';
 
 /** Set this to the deployed Worker URL. Empty means: contact nothing, ever. */
 export const API_BASE='';
+/** Who reads a document, in words a customer would recognise — e.g. 'Google
+    Gemini'. Consent is meaningless if we cannot name the recipient, so document
+    reading stays hidden until this is filled in as well as API_BASE. */
+export const READER_NAME='';
+export const readerConfigured=()=>API_BASE.trim().length>0&&READER_NAME.trim().length>0;
 export const APP_VERSION='1.1.0';
 const PING_DAY_KEY='hisaab.ping.day';
 const PING_ON_KEY='hisaab.ping.on';
@@ -52,6 +57,33 @@ export async function pingOnce(status:LicenseStatus,todayIso:string){
   });
   return {sent:true,reason:''};
  }catch{return {sent:false,reason:'unreachable'};}
+}
+
+/* Reading a document. This is the only function in the app that sends anything
+   of the customer's beyond an email address, and it is reached only from a screen
+   that names where the file is going and requires an explicit tick. */
+export type ExtractOutcome={rows:{date:string;description:string;amount:string;balance:string}[];note:string};
+export const EXTRACT_MAX_BYTES=4_400_000;
+export const EXTRACT_TYPES=['application/pdf','image/png','image/jpeg'];
+
+export async function extractStatement(file:File,licence:string):Promise<ExtractOutcome>{
+ if(!serviceConfigured())throw Error('Document reading is not switched on in this build.');
+ if(!licence)throw Error('Reading documents is part of Pro. Add your licence key in Settings.');
+ if(!EXTRACT_TYPES.includes(file.type))throw Error('Send a PDF, PNG or JPEG.');
+ if(file.size>EXTRACT_MAX_BYTES)throw Error(`That file is ${(file.size/1e6).toFixed(1)} MB. Split the statement by month.`);
+ const bytes=new Uint8Array(await file.arrayBuffer());
+ let binary='';
+ for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));
+ const response=await fetch(`${API_BASE}/v1/extract`,{
+  method:'POST',headers:{'content-type':'application/json'},
+  body:JSON.stringify({licence,mime:file.type,data:btoa(binary)}),
+  mode:'cors',credentials:'omit',referrerPolicy:'no-referrer'
+ });
+ const body=await response.json().catch(()=>({})) as {rows?:unknown;note?:string;error?:string};
+ if(!response.ok)throw Error(body.error??'The reader could not process that document.');
+ const rows=Array.isArray(body.rows)?body.rows as ExtractOutcome['rows']:[];
+ if(!rows.length)throw Error('Nothing readable came back from that document. A clearer scan may work, or enter those rows by hand.');
+ return {rows,note:typeof body.note==='string'?body.note:''};
 }
 
 /** The only call that sends anything a person typed, and only the address itself. */

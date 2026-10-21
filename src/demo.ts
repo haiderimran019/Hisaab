@@ -21,7 +21,8 @@ function addDemoStatements(w:Workspace){
   opening:'0.00',closing:'25000.00',balancesConfirmed:true};
  const batch=(accountId:string,filename:string,rowCount:number)=>({id:crypto.randomUUID(),accountId,filename,
   importedAt:'2026-10-18T09:12:00.000Z',rowCount,imported:rowCount,skipped:0,digest:'demo-sample-statement',
-  mapping:{date:'Value Date',description:'Particulars',debit:'Debit',credit:'Credit',balance:'Balance'}});
+  mapping:{date:'Value Date',description:'Particulars',debit:'Debit',credit:'Credit',balance:'Balance'},
+  source:'csv' as const,reader:''});
  const bankBatch=batch(bank.id,'hbl-statement-jul-oct-2026.csv',12);
  const walletBatch=batch(wallet.id,'easypaisa-oct-2026.csv',1);
  let row=1;

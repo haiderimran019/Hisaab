@@ -295,3 +295,56 @@ export function transferCandidates(w:Workspace,windowDays=4):TransferPair[]{
  }
  return pairs;
 }
+
+/* ── Rows transcribed from a document ─────────────────────────────────────
+   A PDF or a photo read by a model arrives as rows rather than as a file. They
+   go through exactly the same gate as a CSV — fingerprints, duplicate detection,
+   and the running-balance check — because the point is that nothing about a row
+   is trusted more for having come from a machine. If anything, less: a row the
+   balance cannot confirm is set aside here, where a CSV's would be kept. */
+export type ExtractedRow={date:string;description:string;amount:string;balance:string};
+
+export function buildFromRows(opts:{
+ account:Account;existing:StatementLine[];rows:ExtractedRow[];batchId:string;
+}):ParsedImport{
+ const {account,existing,rows,batchId}=opts;
+ if(rows.length>MAX_ROWS)throw Error(`That document produced ${rows.length} rows, more than the ${MAX_ROWS} Hisaab accepts at once. Split it by month.`);
+ const seen=new Set(existing.filter(l=>l.accountId===account.id).map(l=>l.fingerprint));
+ const withinFile=new Set<string>();
+ const lines:StatementLine[]=[];const issues:RowIssue[]=[];let duplicates=0;
+ rows.forEach((row,index)=>{
+  const position=index+1;
+  const amount=parseAmount(row.amount);
+  const date=parseDate(row.date,true);
+  const joined=`${row.date} · ${row.description} · ${row.amount}`.slice(0,300);
+  if(!date){issues.push({row:position,reason:'The reader did not return a usable date for this row',raw:joined});return;}
+  if(amount===null){issues.push({row:position,reason:'The reader did not return a usable amount for this row',raw:joined});return;}
+  if(amount.isZero()){issues.push({row:position,reason:'Amount is zero — this is probably a heading or a total, not a transaction',raw:joined});return;}
+  const balance=parseAmount(row.balance);
+  const description=(row.description||'(no description)').slice(0,400);
+  const fp=fingerprint(account.id,date,description,amount.toFixed(2));
+  const alreadyImported=seen.has(fp),repeatedInFile=withinFile.has(fp);
+  if(alreadyImported||repeatedInFile)duplicates++;
+  withinFile.add(fp);
+  lines.push(lineSchema.parse({
+   id:crypto.randomUUID(),batchId,accountId:account.id,date,
+   description,counterparty:'',amount:amount.toFixed(2),
+   balance:balance?balance.toFixed(2):'',
+   fingerprint:fp,status:(alreadyImported||repeatedInFile)?'duplicate':'pending',linkedId:'',
+   note:alreadyImported?'Matches a line already imported for this account.'
+    :repeatedInFile?REPEAT_IN_FILE:'',
+   row:position
+  }));
+ });
+ const chain=verifyBalances(lines);
+ for(const broken of chain.breaks){
+  const index=lines.findIndex(l=>l.row===broken.row);
+  if(index<0)continue;
+  lines.splice(index,1);
+  issues.push({row:broken.row,
+   reason:`The running balance does not agree with this row: the document shows ${broken.found} where ${broken.expected} would follow from the previous line. The reader most likely misread a figure — check this row on the statement and enter it by hand.`,
+   raw:broken.description});
+ }
+ return {lines,issues,duplicates:lines.filter(l=>l.status==='duplicate').length,
+  rowCount:rows.length,mapping:{source:'read from a document'},header:[],chain};
+}

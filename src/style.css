@@ -344,3 +344,11 @@ tr.duplicate,tr.excluded{opacity:.62}
  border:1px solid var(--line);border-radius:2px;padding:2px 6px;margin-left:7px;white-space:nowrap}
 .lock-trust{margin-top:20px;padding-top:18px;border-top:1px solid var(--line);text-align:left}
 .lock-trust li{font-size:10.5px}
+.check-group{font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);
+ margin:18px 0 8px;padding-top:14px;border-top:1px solid var(--line);font-weight:600}
+.check-group:first-of-type{margin-top:10px;padding-top:0;border-top:0}
+.check-label.wide-check{align-items:flex-start;gap:11px;padding:9px 0}
+.check-label.wide-check input{margin-top:3px;flex:0 0 auto}
+.check-label.wide-check span{display:grid;gap:4px}
+.check-label.wide-check b{font-weight:500;color:#eceef2;font-size:12px;line-height:1.5}
+.check-label.wide-check small{color:var(--muted);font-size:10.5px;line-height:1.65}

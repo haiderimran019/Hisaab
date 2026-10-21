@@ -7,7 +7,7 @@ import {fieldLabels,type FieldName,type ParsedImport,transferCandidates} from '.
 import {icon,num,dateLabel} from './format';
 import {LIMITS,planLabel,importsThisMonth,type LicenseStatus,type Limits} from './license';
 import {PLANS,PAYMENT_RAILS,LAUNCH_PRICE,LAUNCH_NOTE,SUPPORT_EMAIL,BUY_URL,KEY_TURNAROUND,REFUND_WINDOW_DAYS} from './pricing';
-import {serviceConfigured} from './service';
+import {serviceConfigured,readerConfigured,READER_NAME} from './service';
 
 export type Ctx={
  workspace:Workspace;year:number;license:LicenseStatus;limits:Limits;today:string;
@@ -17,6 +17,8 @@ export type ImportDraft={
  accountId:string;filename:string;rows:string[][];headerIndex:number;
  mapping:Partial<Record<FieldName,number>>;dayFirst:boolean;digest:string;
  preview:ParsedImport|null;error:string;
+ /** 'document' rows were transcribed by a reader, so there is no column mapping. */
+ kind:'csv'|'document';readerNote:string;
 };
 
 const signClass=(v:string)=>new Decimal(v).gte(0)?'in':'out';
@@ -48,7 +50,8 @@ export function statementsView(ctx:Ctx){
   <div class="bar-right">
    <label class="year-picker"><span class="sr-only">Account</span><select id="account-filter"><option value="all">All accounts</option>${accounts.map(a=>`<option value="${a.id}" ${ctx.accountFilter===a.id?'selected':''}>${h(a.label)}</option>`).join('')}</select>${icon('chevron-down')}</label>
    <button class="btn secondary" data-action="new-account">${icon('plus')}Account</button>
-   <button class="btn primary" data-action="import-statement">${icon('upload')}Import statement</button>
+   <button class="btn primary" data-action="import-statement">${icon('upload')}Import CSV</button>
+   ${readerConfigured()&&limits.filingPack?`<button class="btn secondary" data-action="read-document">${icon('file-text')}Read a PDF</button>`:''}
   </div>
  </div>
  <p class="quota">${icon('clock')}${h(quota)} · ${h(ctx.demo?'Demo — paid steps unlocked on sample data':planLabel(license))}${limits.importsPerMonth!==Infinity?' · <button class="text-link" data-page="Settings">See Pro</button>':''}</p>
@@ -121,6 +124,7 @@ export function importDrawerBody(ctx:Ctx){
  const d=ctx.draft;
  if(!d)return '<p class="muted">No file loaded.</p>';
  const account=ctx.workspace.accounts.find(a=>a.id===d.accountId);
+ if(d.kind==='document')return documentPreview(ctx,d,account?.label??'');
  const header=d.rows[d.headerIndex]??[];
  const fields:FieldName[]=['date','description','counterparty','amount','debit','credit','drcr','balance'];
  const preview=d.preview;
@@ -151,6 +155,53 @@ export function importDrawerBody(ctx:Ctx){
     <button type="submit" class="btn primary" ${preview.lines.length?'':'disabled'}>${icon('check')}Import ${preview.lines.filter(l=>l.status!=='duplicate').length} line${preview.lines.filter(l=>l.status!=='duplicate').length===1?'':'s'}</button></div>
   </form>
  </div>`:''}`;
+}
+
+function documentPreview(ctx:Ctx,d:ImportDraft,accountLabel:string){
+ const preview=d.preview;
+ const account=ctx.workspace.accounts.find(a=>a.id===d.accountId);
+ return `<p class="drawer-intro">${h(d.filename)} → <b>${h(accountLabel)}</b>, read by ${h(READER_NAME)}.</p>
+ ${d.readerNote?`<p class="chain-note">${icon('circle-help')}<span>${h(d.readerNote)}</span></p>`:''}
+ ${d.error?`<p class="form-error visible">${h(d.error)}</p>`:''}
+ ${preview?`<div class="import-preview">
+  <h3>${preview.lines.length} row${preview.lines.length===1?'':'s'} transcribed${preview.issues.length?` · ${preview.issues.length} set aside`:''}</h3>
+  ${preview.chain.checked
+   ?`<p class="chain-note ${preview.chain.breaks.length?'warn':'ok'}">${icon(preview.chain.breaks.length?'octagon-alert':'check')}
+     <span>Checked against the running balance printed on the document: <b>${preview.chain.verified}</b> row${preview.chain.verified===1?'':'s'} add up exactly${preview.chain.breaks.length?`, and <b>${preview.chain.breaks.length}</b> did not — a reader misreading a figure is exactly what that catches, so those are set aside`:''}.</span></p>`
+   :`<p class="chain-note warn">${icon('octagon-alert')}<span>This document has no running balance column, so there is no arithmetic to check the transcription against. Compare these rows to the statement yourself before you classify them.</span></p>`}
+  <div class="table-scroll"><table class="cards"><thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Balance</th></tr></thead><tbody>
+  ${preview.lines.slice(0,10).map(l=>`<tr><td data-label="Date">${h(l.date)}</td><td data-label="Description">${h(l.description.slice(0,70))}</td>
+   <td data-label="Amount">${amountCell(l.amount,account?.currency??'PKR')}</td><td data-label="Balance">${l.balance?num(Number(l.balance)):'—'}</td></tr>`).join('')}
+  </tbody></table></div>
+  ${preview.lines.length>10?`<p class="muted small">…and ${preview.lines.length-10} more.</p>`:''}
+  ${preview.issues.length?`<div class="issue-box"><h4>${icon('octagon-alert')}These rows were not imported</h4>
+   <ul>${preview.issues.slice(0,12).map(i=>`<li><b>Row ${i.row}</b> — ${h(i.reason)}<br><small>${h(i.raw.slice(0,140))}</small></li>`).join('')}</ul></div>`:''}
+  <form id="commit-form">
+   <label class="check-label"><input name="understood" type="checkbox"><span>I have compared these rows against the statement and they are right.</span></label>
+   <div class="drawer-actions"><button type="button" class="btn ghost" data-action="close">Discard</button>
+    <button type="submit" class="btn primary" ${preview.lines.length?'':'disabled'}>${icon('check')}Add ${preview.lines.filter(l=>l.status!=='duplicate').length} row${preview.lines.filter(l=>l.status!=='duplicate').length===1?'':'s'} to review</button></div>
+  </form>
+ </div>`:''}`;
+}
+
+export function documentConsent(ctx:Ctx){
+ const accounts=ctx.workspace.accounts;
+ return `<p class="drawer-intro">Only for statements your bank will not give you as CSV. Read this before you choose a file — it is the one place in Hisaab where something of yours leaves this device.</p>
+ <ul class="trust-list">
+  <li>${icon('octagon-alert')}<span><b>The whole document is sent to ${h(READER_NAME)}</b> to be transcribed. That includes your account number, your balances and every transaction printed on it.</span></li>
+  <li>${icon('check')}<span><b>Hisaab stores none of it.</b> The file passes through our service in memory for one request and is dropped. No copy, no log.</span></li>
+  <li>${icon('circle-help')}<span><b>Nothing it returns is trusted.</b> The rows are checked against the running balance on the document, and you confirm every one before anything is recorded.</span></li>
+  <li>${icon('shield-check')}<span><b>Satisfy yourself about ${h(READER_NAME)}.</b> What they keep and for how long is their policy, not ours, and you should read it before sending a bank statement to anyone.</span></li>
+ </ul>
+ <form id="document-form" class="form-grid">
+  <label class="field"><span>Which account is this statement for?</span><select name="accountId">
+   ${accounts.map(a=>`<option value="${a.id}">${h(a.label)} · ${h(a.currency)}</option>`).join('')}</select></label>
+  <label class="check-label"><input name="understood" type="checkbox"><span>I understand this document will be sent to ${h(READER_NAME)} to be read.</span></label>
+  <div class="form-error" role="alert"></div>
+  <div class="drawer-actions"><button type="button" class="btn ghost" data-action="close">Cancel</button>
+   <button type="submit" class="btn primary">${icon('file-text')}Choose a file</button></div>
+ </form>
+ <p class="muted small">A CSV import never involves this, and nothing here changes what the rest of the app does.</p>`;
 }
 
 export function planPanel(ctx:Ctx){

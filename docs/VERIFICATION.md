@@ -2,7 +2,7 @@
 
 ## Completed
 
-- `npm test`: 95 passing tests in the app, plus 28 in `server/` covering precise settlement, decimal rounding, fees exceeding proceeds, PKR rate validation, invalid dates and July–June boundaries, every business-slab boundary, surcharge threshold, unsupported years, 154A rates/conditions including the PSEB sales-return exception, separate tax bases, withholding segregation, unsupported profiles, expense allocation, strict schemas, CSV formula injection, HTML escaping, zero confirmed export bases, unsafe aggregate precision, AJK/GB review gate and authenticated encrypted-backup round trips/tampering/wrong passphrases.
+- `npm test`: 101 passing tests in the app, plus 28 in `server/` covering precise settlement, decimal rounding, fees exceeding proceeds, PKR rate validation, invalid dates and July–June boundaries, every business-slab boundary, surcharge threshold, unsupported years, 154A rates/conditions including the PSEB sales-return exception, separate tax bases, withholding segregation, unsupported profiles, expense allocation, strict schemas, CSV formula injection, HTML escaping, zero confirmed export bases, unsafe aggregate precision, AJK/GB review gate and authenticated encrypted-backup round trips/tampering/wrong passphrases.
 - `npm run build`: TypeScript check and Vite production build pass.
 - Dependency installation audit: zero vulnerabilities in the installed dependency tree at installation. This is a point-in-time package audit, not a penetration test.
 - Browser: income creation, editing and search with a six-decimal FX rate; script-shaped text safely rendered; expense business-use allocation; invoice creation, quantity × price and print preview; encrypted-vault setup with isolated synthetic QA data; no demo copied into vault; persistence across reload; locked reload; wrong-passphrase rejection; successful unlock; encrypted backup download; restore consent rejection and successful authenticated restore.
@@ -69,6 +69,19 @@
 - **No real bank statement PDF has been read.** Extraction quality, and therefore how often the balance chain catches a misread, is completely unmeasured. That number is the one that decides whether this feature is usable, and it can only be found with real documents.
 - The balance chain only helps where a statement prints a running balance. Statements without one are imported unverified, and the import screen says so.
 - The service is still undeployed; none of the endpoints has run against real D1.
+
+## Added 21 October 2026 — PDF reading in the app, plain-language declarations
+
+- **The document flow is now reachable.** Previously `/v1/extract` existed with no client. There is a consent screen that names the reader, states that the whole document including the account number and every transaction is sent, and requires an explicit tick plus an account before a file picker opens. The button only appears when both `API_BASE` and `READER_NAME` are set — consent is meaningless if the recipient cannot be named — and only on a plan that includes it.
+- Transcribed rows go through **the same gate as a CSV**: fingerprints, duplicate detection against everything already imported, and the running-balance check. Six tests cover it: a misread figure caught by the balance and set aside; unreadable rows reported rather than repaired; a re-read document still caught as a duplicate; a document with no balance column imported but flagged unverified; and an absurd row count refused. The preview warns explicitly when there is no balance column to check against.
+- Each import batch now records whether its rows came from a `csv` or a `document`, and which reader, so a Filing Pack can show which figures a machine transcribed. Added with a schema default rather than a migration, so workspaces saved earlier still load.
+- **The tax declarations were rewritten.** Eleven items of legal wording that a freelancer could not honestly answer are now plain questions grouped under You / Export work / Local work / Sales tax, each with the statutory basis underneath rather than instead of it. The underlying fields and every gate are unchanged — verified in the browser by ticking "I also have a salary, property, shares or other income" and confirming the combined-assessment gate still fires and still blocks a final figure.
+
+### Not verified for this change
+
+- **The document flow has never been run end to end**, because no service is deployed and no reader is configured. The consent screen, the account picker and the error paths were exercised by reading the code and the types, not by sending a file. `handleDocumentFile` has never executed against a real response.
+- No real PDF has been transcribed, so the rate at which the balance chain catches a reader's mistakes is still unknown. That number decides whether the feature is worth offering.
+- The plain-language declarations are clearer, but no actual freelancer has been asked whether they can now answer them honestly. That was the original problem and it remains unmeasured.
 
 ## Limits
 

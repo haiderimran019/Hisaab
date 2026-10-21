@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseCsv,findHeader,suggestMapping,parseAmount,parseDate,buildImport,transferCandidates,fingerprint} from '../src/statements.ts';
+import {parseCsv,findHeader,suggestMapping,parseAmount,parseDate,buildImport,buildFromRows,transferCandidates,fingerprint} from '../src/statements.ts';
 import {blankWorkspace,reconcile,readiness,workspaceSchema,accountSchema,type Workspace,type Account} from '../src/core.ts';
 
 const account=(over:Partial<Account>={}):Account=>accountSchema.parse({
@@ -280,4 +280,64 @@ test('a verified chain and the account reconciliation agree with each other', ()
  const r=reconcile(w,acc.id);
  assert.equal(r.balanced,true,'the chain and the opening/closing balances tell the same story');
  assert.equal(r.computedClosing,14000);
+});
+
+/* ── Rows transcribed from a document ────────────────────────────────────── */
+
+const readRow=(date:string,description:string,amount:string,balance='')=>({date,description,amount,balance});
+const fromRows=(rows:ReturnType<typeof readRow>[],acc=account(),existing:Workspace['lines']=[])=>
+ buildFromRows({account:acc,existing,rows,batchId:crypto.randomUUID()});
+
+test('transcribed rows go through the same gate as a CSV', () => {
+ const out=fromRows([
+  readRow('2026-07-01','Client payment','100000','110000'),
+  readRow('2026-07-02','Internet','-6500','103500')
+ ]);
+ assert.equal(out.lines.length,2);
+ assert.equal(out.chain.checked,true);
+ assert.equal(out.chain.breaks.length,0);
+ assert.equal(out.lines[0].status,'pending','nothing is income until a person says so');
+ assert.equal(out.mapping.source,'read from a document');
+});
+
+test('a misread figure from the reader is caught by the balance and set aside', () => {
+ const out=fromRows([
+  readRow('2026-07-01','A','100000','110000'),
+  readRow('2026-07-02','Misread','650','116500'),   // balance implies 6,500
+  readRow('2026-07-03','C','-500','116000')
+ ]);
+ assert.equal(out.lines.find(l=>l.description==='Misread'),undefined);
+ assert.equal(out.issues.length,1);
+ assert.match(out.issues[0].reason,/reader most likely misread/);
+ assert.equal(out.lines.length,2);
+});
+
+test('rows the reader could not read are reported, not repaired', () => {
+ const out=fromRows([
+  readRow('','No date','1000'),
+  readRow('2026-07-02','No amount',''),
+  readRow('2026-07-03','Zero','0'),
+  readRow('2026-07-04','Fine','1000')
+ ]);
+ assert.deepEqual(out.lines.map(l=>l.description),['Fine']);
+ assert.equal(out.issues.length,3);
+ assert.ok(out.issues.every(i=>i.reason.length>10));
+});
+
+test('a document re-read is still caught as a duplicate of what is already there', () => {
+ const acc=account();
+ const first=fromRows([readRow('2026-07-01','Client payment','100000')],acc);
+ const second=fromRows([readRow('2026-07-01','Client payment','100000')],acc,first.lines);
+ assert.equal(second.lines[0].status,'duplicate');
+});
+
+test('a document with no balance column still imports, but unverified', () => {
+ const out=fromRows([readRow('2026-07-01','A','1000'),readRow('2026-07-02','B','2000')]);
+ assert.equal(out.chain.checked,false);
+ assert.equal(out.lines.length,2);
+});
+
+test('an absurd row count from a reader is refused', () => {
+ const many=Array.from({length:9000},(_,i)=>readRow('2026-07-01','r'+i,'1'));
+ assert.throws(()=>fromRows(many),/Split it by month/);
 });

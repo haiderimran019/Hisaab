@@ -12,15 +12,15 @@ const icons={LayoutDashboard,ArrowDownLeft,ArrowUpRight,ReceiptText,FileText,Cal
 const app=document.querySelector<HTMLDivElement>('#app')!;
 import {icon,fmt,dateLabel,today} from './format';
 import {accountSchema,batchSchema,accountKinds,type StatementLine} from './core';
-import {parseCsv,findHeader,suggestMapping,buildImport,MAX_FILE_BYTES,type FieldName} from './statements';
+import {parseCsv,findHeader,suggestMapping,buildImport,buildFromRows,MAX_FILE_BYTES,type FieldName} from './statements';
 import {checkLicense,trialStatus,limitsFor,planLabel,LIMITS,importsThisMonth,normalizeKey,type LicenseStatus,type Limits} from './license';
-import {statementsView,importDrawerBody,planPanel,packGate,type Ctx,type ImportDraft} from './ui-statements';
+import {statementsView,importDrawerBody,documentConsent,planPanel,packGate,type Ctx,type ImportDraft} from './ui-statements';
 import {filingPack} from './pack';
 import {homeView} from './ui-home';
 import {securityPanel,privacyNotice,type TwoFactorDraft} from './ui-privacy';
 import {randomSecret,otpauthUri,verifyCode,makeRecoveryCodes,hashAll,hashRecovery,RECOVERY_COUNT} from './totp';
 import {checkReview,packDigest,type ReviewStatus} from './review';
-import {pingOnce,setPingEnabled,subscribe,serviceConfigured} from './service';
+import {pingOnce,setPingEnabled,subscribe,serviceConfigured,readerConfigured,extractStatement,EXTRACT_TYPES,READER_NAME} from './service';
 let workspace=demo(),mode:'demo'|'vault'|'locked'='demo',page='Home',year=2027,query='',categoryFilter='all',railFilter='all';
 let key:CryptoKey|null=null,salt:Uint8Array|null=null,lastActivity=Date.now(),busy=false,drawer='',editId='',fx: {rates:Record<string,number>,time:string,expires:string}|null=null;
 let confirmAction:(()=>Promise<void>)|null=null;
@@ -94,8 +94,28 @@ function taxView(e:ReturnType<typeof estimate>){return `<div class="tax-layout">
  <section class="panel source-panel"><h2>Rules behind the numbers</h2><p>Official Pakistani sources · checked 21 October 2026 · rule set ${RULE_VERSION}</p>${SOURCES.map(s=>`<a href="${s.url}" target="_blank" rel="noopener noreferrer" class="source-row"><div><b>${s.title}</b><small>${s.detail}</small></div>${icon('external-link')}</a>`).join('')}<p class="note">Rules can change after this review. This release supports TY2026 and TY2027 only. It is not affiliated with FBR, PSEB or any payment provider.</p></section></div>
  <div><section class="panel checks-panel"><h2>Before you rely on it</h2><p>Confirm your facts in the tax profile.</p>${e.reasons.map(r=>`<div class="check-item">${icon('circle-help')}<p>${h(r)}</p></div>`).join('')||`<div class="check-item green">${icon('check')}<p>All supported-profile checks confirmed. Have a practitioner review the worksheet.</p></div>`}${button('Update tax profile','tax-profile','primary','settings')}</section><section class="panel filing-panel"><h2>Filing checklist</h2><ul><li>Income return and business schedules</li><li>Bank PRCs/ePRCs & withholding certificates</li><li>Valid PSEB certificate, if applicable</li><li>Personal wealth statement and reconciliation (s.116)</li><li>Provincial/ICT sales-tax returns where required</li><li>IRIS classifications verified by your accountant</li></ul><a class="text-link" href="https://iris.fbr.gov.pk/" target="_blank" rel="noopener noreferrer">Open FBR IRIS ${icon('external-link')}</a></section><section class="panel filing-panel"><h2>All Pakistan, clearly scoped</h2><p>Punjab, Sindh, KP, Balochistan and ICT have separate service-tax rules. AJK/GB and non-resident cases require specialist review. A federal estimate is never presented as all taxes payable.</p></section></div></div>`;}
 function reportsView(e:ReturnType<typeof estimate>){const rs=receipts();return `${packGate(ctx())}<section class="panel report-panel"><h2>Your year, without the guesswork.</h2><p>Export records and a source-linked calculation worksheet. These files contain financial data; share them only with someone you trust.</p><div class="export-options"><div><h3>Income ledger</h3><p>Gross, fees, actual FX, settlement, tax base and evidence reference.</p>${button('Download income CSV','income-csv','secondary','download')}</div><div><h3>Business expenses</h3><p>Original currency, business-use allocation and claimed deductions.</p>${button('Download expense CSV','expense-csv','secondary','download')}</div><div><h3>Tax worksheet</h3><p>Calculation inputs, separate regimes, checks, sources and limitations.</p>${button('Download worksheet JSON','worksheet','primary','download')}${button('Print worksheet','print-worksheet','secondary','printer')}</div></div></section><section class="panel"><div class="panel-head"><h2>Monthly reconciliation</h2><span class="note">Tax year ${year}</span></div><div class="table-scroll"><table><thead><tr><th>Month</th><th>Gross PKR</th><th>Fees PKR</th><th>Withheld PKR</th><th>Take-home PKR</th></tr></thead><tbody>${Array.from({length:12},(_,i)=>{const m=(i+6)%12+1,y=i<6?year-1:year,month=`${y}-${String(m).padStart(2,'0')}`,rows=rs.filter(r=>r.date.startsWith(month));return `<tr><td>${dateLabel(month+'-01').replace('1 ','')}</td>${['gross','fees','withheld','net'].map(k=>`<td class="amount-cell">${fmt(sum(rows.map(r=>receiptMath(r)[k as 'gross'])))}</td>`).join('')}</tr>`;}).join('')}</tbody></table></div></section><p class="note">${e.liability===null?'Review required: exported worksheet is not a completed tax return.':'Worksheet is an estimate for review.'} Invoice totals are excluded until receipts are recorded.</p>`;}
-const checks=[['resident','I am a Pakistan-resident individual'],['pseb','I am registered with and duly certified by PSEB for the relevant receipts'],['returnFiled','Income tax return filed for this tax year'],['statementsFiled','Required withholding statements filed, or not required'],['salesReturns','Required sales-tax returns filed, or not required (other service exports)'],['noForeignCredit','No foreign tax credit claimed against 154A receipts'],['noOptOut','I have not opted out of 154A final taxation'],['simpleBusiness','Domestic income is a simple individual cash-basis service business'],['deductionsReviewed','Domestic deductions and expense allocation reviewed under s.20–21'],['provinceReviewed','My provincial / ICT service-tax obligations have been reviewed separately'],['otherIncome','I also have salary, investments, property or other income / special relief']];
-function settingsView(){return `<div class="settings-grid">${planPanel(ctx())}${securityPanel(securityCtx())}<section class="panel settings-panel"><h2>Tax profile</h2><p>These are your declarations, not checks against government records. Confirm them separately for each year before relying on an estimate.</p><form id="profile-form">${input('Workspace name','name',workspace.profile.name,'text',false)}${select('Province / territory','province',['Punjab','Sindh','Khyber Pakhtunkhwa','Balochistan','Islamabad','AJK / GB'],workspace.profile.province)}<div class="notice compact">Changing tax year resets year-specific confirmations. PSEB and residency must reflect the selected year.</div>${checks.map(([k,label])=>`<label class="check-label"><input type="checkbox" name="${k}" ${workspace.profile.confirmedYear===year&&workspace.profile[k as keyof typeof workspace.profile]?'checked':''}><span>${label}</span></label>`).join('')}<button class="btn primary" type="submit">${icon('check')}Save tax profile</button></form></section><div><section class="panel settings-panel"><h2>Private by design</h2><div class="privacy-list"><p>${icon('lock-keyhole')}AES-256-GCM encrypted browser storage</p><p>${icon('shield-check')}Passphrase stays on your device</p><p>${icon('clock')}Automatic lock after 5 minutes of inactivity</p></div><p>Invoices, income, expenses, receipts and profile are the complete data inventory. No analytics, advertising, bank connection or customer-data server. Optional FX requests share your IP address with ExchangeRate-API, never your ledger.</p><p>Encryption cannot protect an unlocked or compromised browser. Back up regularly. There is no passphrase recovery.</p>${mode==='demo'?button(hasVault()?'Unlock workspace':'Create private workspace',hasVault()?'open-vault':'create-vault','primary','lock-keyhole'):button('Lock workspace','lock','secondary','lock-keyhole')}</section><section class="panel settings-panel"><h2>Backup & portability</h2><p>An encrypted backup includes receipts. Restoring replaces the current workspace after you confirm. Plain CSV and worksheet exports are available in Reports.</p>${button('Download encrypted backup','backup','secondary','download')}<label class="btn secondary file-label">${icon('upload')}Restore encrypted backup<input id="restore-file" type="file" accept="application/json,.json" hidden></label><p class="note">Current mode: ${mode==='demo'?'unsaved demo':'encrypted workspace'} · ${workspace.receipts.length} receipts · ${workspace.expenses.length} expenses · ${workspace.invoices.length} invoices</p></section><section class="panel settings-panel danger-zone"><h2>Delete this workspace</h2><p>Removes only Hisaab's encrypted data on this browser. Download a backup first. Copies you exported remain on your device.</p>${button('Delete local workspace','delete-vault','danger','trash-2')}</section></div></div>`;}
+/* The declarations behind the tax estimate, in words someone can actually answer.
+   The legal wording is kept beside each one rather than instead of it: a person
+   who ticks "yes" to something they do not understand produces a confident wrong
+   number, and our gates depend on these answers being true. Grouped so the
+   export-only questions are visibly export-only. */
+const checks:[string,string,string,string][]=[
+ ['resident','You','I live in Pakistan and pay tax here as an individual','Resident individual under s.82. If you spent most of the year abroad, this needs a practitioner.'],
+ ['otherIncome','You','I also have a salary, property, shares or other income','Tick this if any of it applies. Hisaab covers freelance and small business income only, and will stop short of a final figure so the rest is not left out.'],
+ ['pseb','Export work','I am registered with PSEB and my certificate covers this work','Only then is the IT/ITeS export rate 0.25% instead of 1%. Registered but not certified for this service does not count.'],
+ ['returnFiled','Export work','I have filed, or will file, my income tax return for this year','One of the conditions for export income being taxed as a final liability (s.154A).'],
+ ['statementsFiled','Export work','I have filed any withholding statements I was required to file','If none were required of you, that counts as yes.'],
+ ['salesReturns','Export work','I have filed any sales tax returns I was required to file','Required for other service exports, and for IT exports without PSEB certification. If none were required, that counts as yes.'],
+ ['noForeignCredit','Export work','I am not claiming credit for tax paid in another country','Claiming foreign tax credit against these receipts takes them out of the final-tax regime.'],
+ ['noOptOut','Export work','I have not opted out of final taxation on exports','Most people have not. If you filed an option to be taxed normally instead, untick this.'],
+ ['simpleBusiness','Local work','My local work is a simple one-person service business on a cash basis','Not a company, not a partnership, no stock or manufacturing. Income counted when the money arrives.'],
+ ['deductionsReviewed','Local work','I have checked that the expenses I claim are genuinely business expenses','Under s.20–21, and apportioned where something is part personal. Ticking this without checking is how deductions get disallowed.'],
+ ['provinceReviewed','Sales tax','I have looked into whether I owe provincial or ICT sales tax separately','Hisaab does not calculate sales tax at all. Services can be taxable in Punjab, Sindh, KP, Balochistan or ICT regardless of income tax.']
+];
+function settingsView(){return `<div class="settings-grid">${planPanel(ctx())}${securityPanel(securityCtx())}<section class="panel settings-panel"><h2>Tax profile</h2><p>These are your declarations, not checks against government records. Confirm them separately for each year before relying on an estimate.</p><form id="profile-form">${input('Workspace name','name',workspace.profile.name,'text',false)}${select('Province / territory','province',['Punjab','Sindh','Khyber Pakhtunkhwa','Balochistan','Islamabad','AJK / GB'],workspace.profile.province)}<div class="notice compact">Changing tax year resets year-specific confirmations. PSEB and residency must reflect the selected year.</div>${(()=>{let group='';return checks.map(([k,section,label,note])=>{
+   const heading=section!==group?`<h3 class="check-group">${h(section)}</h3>`:'';group=section;
+   return `${heading}<label class="check-label wide-check"><input type="checkbox" name="${k}" ${workspace.profile.confirmedYear===year&&workspace.profile[k as keyof Workspace['profile']]?'checked':''}><span><b>${h(label)}</b><small>${h(note)}</small></span></label>`;
+  }).join('');})()}<button class="btn primary" type="submit">${icon('check')}Save tax profile</button></form></section><div><section class="panel settings-panel"><h2>Private by design</h2><div class="privacy-list"><p>${icon('lock-keyhole')}AES-256-GCM encrypted browser storage</p><p>${icon('shield-check')}Passphrase stays on your device</p><p>${icon('clock')}Automatic lock after 5 minutes of inactivity</p></div><p>Invoices, income, expenses, receipts and profile are the complete data inventory. No analytics, advertising, bank connection or customer-data server. Optional FX requests share your IP address with ExchangeRate-API, never your ledger.</p><p>Encryption cannot protect an unlocked or compromised browser. Back up regularly. There is no passphrase recovery.</p>${mode==='demo'?button(hasVault()?'Unlock workspace':'Create private workspace',hasVault()?'open-vault':'create-vault','primary','lock-keyhole'):button('Lock workspace','lock','secondary','lock-keyhole')}</section><section class="panel settings-panel"><h2>Backup & portability</h2><p>An encrypted backup includes receipts. Restoring replaces the current workspace after you confirm. Plain CSV and worksheet exports are available in Reports.</p>${button('Download encrypted backup','backup','secondary','download')}<label class="btn secondary file-label">${icon('upload')}Restore encrypted backup<input id="restore-file" type="file" accept="application/json,.json" hidden></label><p class="note">Current mode: ${mode==='demo'?'unsaved demo':'encrypted workspace'} · ${workspace.receipts.length} receipts · ${workspace.expenses.length} expenses · ${workspace.invoices.length} invoices</p></section><section class="panel settings-panel danger-zone"><h2>Delete this workspace</h2><p>Removes only Hisaab's encrypted data on this browser. Download a backup first. Copies you exported remain on your device.</p>${button('Delete local workspace','delete-vault','danger','trash-2')}</section></div></div>`;}
 function input(label:string,name:string,value:unknown='',type='text',required=true,extra=''){return `<label class="field"><span>${label}</span><input name="${name}" type="${type}" value="${h(value)}" ${required?'required':''} ${extra} ${type==='number'?`${extra.includes('step=')?'':'step="0.01"'} min="0"`:''} ${type==='text'?'maxlength="400"':''}></label>`;}
 function select(label:string,name:string,values:readonly string[],value:string){return `<label class="field"><span>${label}</span><select name="${name}">${values.map(v=>`<option value="${h(v)}" ${v===value?'selected':''}>${h(v)}</option>`).join('')}</select></label>`;}
 function categoryOptions(value:string){return [['it-export','IT / IT-enabled export'],['service-export','Other service export'],['domestic','Domestic freelance business'],['social-media','Social media revenue — review'],['other','Other / unsure — review']].map(([v,l])=>`<option value="${v}" ${value===v?'selected':''}>${l}</option>`).join('');}
@@ -125,7 +145,8 @@ function drawerView(){let title='',body='';
   <div class="form-error" role="alert"></div>
   <div class="drawer-actions">${a?`<button type="button" class="btn ghost" data-delete-account="${a.id}">${icon('trash-2')}Remove account</button>`:''}
   <button type="button" class="btn ghost" data-action="close">Cancel</button><button type="submit" class="btn primary">${icon('check')}${a?'Save account':'Add account'}</button></div></form>`;}
- else if(drawer==='import'){title='Import a statement';body=importDrawerBody(ctx());}
+ else if(drawer==='import'){title=draft?.kind==='document'?'Check what was read':'Import a statement';body=importDrawerBody(ctx());}
+ else if(drawer==='read-document'){title='Read a PDF statement';body=documentConsent(ctx());}
  return `<div class="overlay"><button class="overlay-shade" data-action="close" aria-label="Close panel"></button><section class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title"><div class="drawer-head"><h2 id="drawer-title">${title}</h2><button class="icon-btn" data-action="close" aria-label="Close panel">${icon('x')}</button></div>${body}</section></div>`;}
 let confirmMessage='',backupToRestore='';
 function openDrawer(type:string,id=''){drawer=type;editId=id;render();const el=document.querySelector<HTMLInputElement>('.drawer input');if(el)el.focus();if(pendingLine)prefillFromLine();if(type==='income')updateIncomePreview();}
@@ -184,6 +205,11 @@ async function doAction(action:string){switch(action){
  case 'new-account':{
   if(workspace.accounts.length>=limits.accounts){toast(`Your plan covers ${limits.accounts} account${limits.accounts===1?'':'s'}. Pro covers 10.`);go('Settings');break;}
   openDrawer('account');break;}
+ case 'read-document':{
+  if(!readerConfigured()){toast('Document reading is not switched on in this build.');break;}
+  if(!limits.filingPack){toast('Reading documents is part of Pro.');go('Settings');break;}
+  if(!workspace.accounts.length){toast('Add the account this statement belongs to first.');openDrawer('account');break;}
+  openDrawer('read-document');break;}
  case 'import-statement':{
   if(!workspace.accounts.length){toast('Add the account this statement belongs to first.');openDrawer('account');break;}
   const used=importsThisMonth(workspace.batches,today());
@@ -350,7 +376,7 @@ async function handleStatementFile(){
     filename:file.name.slice(0,120),rows,headerIndex,
     mapping:suggestMapping(rows[headerIndex]),dayFirst:true,
     digest:[...new Uint8Array(hashed)].map(b=>b.toString(16).padStart(2,'0')).join(''),
-    preview:null,error:''
+    preview:null,error:'',kind:'csv',readerNote:''
    };
    recomputePreview();openDrawer('import');
   }catch(e){toast(safeError(e));}
@@ -427,11 +453,19 @@ function bindStatements(){
    id:preview.lines[0].batchId,accountId:current.accountId,filename:current.filename,
    importedAt:new Date().toISOString(),rowCount:preview.rowCount,
    imported:preview.lines.filter(l=>l.status!=='duplicate').length,
-   skipped:preview.duplicates+preview.issues.length,digest:current.digest,mapping:preview.mapping
+   skipped:preview.duplicates+preview.issues.length,digest:current.digest,mapping:preview.mapping,
+   source:current.kind,reader:current.kind==='document'?READER_NAME:''
   });
   await change(w=>{w.batches.push(batch);w.lines.push(...preview.lines);});
   draft=null;lineFilter='pending';accountFilter=current.accountId;page='Statements';render();
   toast(`${batch.imported} line${batch.imported===1?'':'s'} imported.${preview.duplicates?` ${preview.duplicates} repeat line${preview.duplicates===1?'':'s'} flagged.`:''}${preview.issues.length?` ${preview.issues.length} row${preview.issues.length===1?'':'s'} not read.`:''} Decide what each one is next.`);
+ });
+ bindForm('document-form',async(_f,d)=>{
+  if(!d.has('understood'))throw Error(`Tick the box to confirm you understand the document is sent to ${READER_NAME}.`);
+  documentAccountId=String(d.get('accountId')??'');
+  if(!documentAccountId)throw Error('Choose which account this statement belongs to.');
+  documentInput.value='';
+  documentInput.click();
  });
  bindForm('account-form',async(_f,d)=>{
   const raw=Object.fromEntries(d.entries()) as Record<string,string>;
@@ -506,4 +540,37 @@ function bindSecurity(){
    ?`Verified: reviewed by ${status.payload.name} on ${status.payload.reviewedOn}.`
    :status.state==='stale'?status.reason:'Certificate stored.');
  });
+}
+
+/* ── Reading a statement that only exists as a PDF ────────────────────────── */
+const documentInput=(()=>{
+ const el=document.createElement('input');
+ el.type='file';el.accept=EXTRACT_TYPES.join(',');el.id='document-file';el.hidden=true;
+ el.addEventListener('change',()=>{void handleDocumentFile();});
+ document.body.append(el);
+ return el;
+})();
+let documentAccountId='';
+async function handleDocumentFile(){
+ const file=documentInput.files?.[0];
+ if(!file||!documentAccountId)return;
+ const account=workspace.accounts.find(a=>a.id===documentAccountId);
+ if(!account){toast('That account is no longer in this workspace.');return;}
+ toast(`Sending ${file.name} to ${READER_NAME} to be read. This can take a moment.`);
+ try{
+  const outcome=await extractStatement(file,workspace.license.key);
+  // Transcribed rows go through the same gate as a CSV: fingerprints, duplicate
+  // detection, and the running balance. Nothing is trusted for being machine-read.
+  const built=buildFromRows({account,existing:workspace.lines,rows:outcome.rows,batchId:crypto.randomUUID()});
+  draft={
+   accountId:account.id,filename:file.name.slice(0,120),rows:[],headerIndex:0,mapping:{},
+   dayFirst:true,digest:'read-by-'+READER_NAME.toLowerCase().replace(/[^a-z0-9]+/g,'-'),
+   preview:built,error:'',kind:'document',readerNote:outcome.note
+  };
+  openDrawer('import');
+ }catch(e){
+  toast(safeError(e));
+ }finally{
+  documentInput.value='';
+ }
 }

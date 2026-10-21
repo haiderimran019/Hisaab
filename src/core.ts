@@ -91,7 +91,12 @@ export const accountSchema=z.object({
 export const batchSchema=z.object({
  id:z.string().uuid(),accountId:z.string().uuid(),filename:text.min(1),importedAt:z.string().min(10).max(40),
  rowCount:z.number().int().min(0).max(8000),imported:z.number().int().min(0).max(8000),
- skipped:z.number().int().min(0).max(8000),digest:z.string().max(128),mapping:z.record(z.string().max(120))
+ skipped:z.number().int().min(0).max(8000),digest:z.string().max(128),mapping:z.record(z.string().max(120)),
+ /* How the rows were obtained. Defaults to 'csv' so workspaces saved before
+    document reading existed still load without a migration. A pack must be able
+    to say which rows a machine transcribed rather than a bank exported. */
+ source:z.enum(['csv','document']).default('csv'),
+ reader:text.default('')
 }).strict();
 export const lineSchema=z.object({
  id:z.string().uuid(),batchId:z.string().uuid(),accountId:z.string().uuid(),date,
