@@ -31,3 +31,27 @@ test('weak passphrases rejected',async()=>await assert.rejects(()=>derive('short
 test('confirmed zero export base rejected instead of producing zero-tax claim',()=>assert.equal(receiptSchema.safeParse(receipt({taxBase:'0',baseConfirmed:true})).success,false));
 test('AJK/GB is not falsely presented as a complete federal assessment',()=>{const w=confirmed();w.profile.province='AJK / GB';w.receipts=[receipt()];assert.equal(estimate(w,2027).liability,null);});
 test('unsafe magnitudes cannot silently lose paisa precision',()=>{assert.throws(()=>money('90071992547409.92'));assert.throws(()=>money('NaN'));assert.equal(receiptSchema.safeParse(receipt({gross:'999999999999',rate:'99999',fee:'0',withheld:'0'})).success,false);});
+
+test('income can be recorded with no client name at all', () => {
+ const base={id:crypto.randomUUID(),date:'2026-11-14',description:'Cash job',currency:'PKR' as const,
+  gross:'45000',fee:'0',rate:'1',bankFee:'0',withheld:'0',rail:'Other' as const,category:'domestic' as const,
+  evidence:'',banking:false,taxBase:'45000',baseConfirmed:false};
+ const blank=receiptSchema.parse({...base,client:''});
+ assert.equal(blank.client,'');
+ const spaces=receiptSchema.parse({...base,client:'   '});
+ assert.equal(spaces.client,'','whitespace is trimmed to a genuine blank, not a space');
+ // It still counts as income and still reaches the tax estimate.
+ const w=blankWorkspace();
+ w.receipts.push(blank);
+ w.profile={...w.profile,confirmedYear:2027,simpleBusiness:true,deductionsReviewed:true,provinceReviewed:true};
+ const e=estimate(workspaceSchema.parse(w),2027);
+ assert.equal(e.localBase,45000,'an unnamed payment is still domestic business income');
+ assert.equal(e.receipts,1);
+});
+
+test('a client name is still kept when one is given', () => {
+ const r=receiptSchema.parse({id:crypto.randomUUID(),date:'2026-11-14',client:'  Orbit Labs  ',description:'',
+  currency:'PKR',gross:'1000',fee:'0',rate:'1',bankFee:'0',withheld:'0',rail:'Other',category:'domestic',
+  evidence:'',banking:false,taxBase:'1000',baseConfirmed:false});
+ assert.equal(r.client,'Orbit Labs');
+});

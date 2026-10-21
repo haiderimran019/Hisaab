@@ -7,6 +7,7 @@ import {fieldLabels,type FieldName,type ParsedImport,transferCandidates} from '.
 import {icon,num,dateLabel} from './format';
 import {LIMITS,planLabel,importsThisMonth,type LicenseStatus,type Limits} from './license';
 import {PLANS,PAYMENT_RAILS,LAUNCH_PRICE,LAUNCH_NOTE,SUPPORT_EMAIL,BUY_URL,KEY_TURNAROUND,REFUND_WINDOW_DAYS} from './pricing';
+import {serviceConfigured} from './service';
 
 export type Ctx={
  workspace:Workspace;year:number;license:LicenseStatus;limits:Limits;today:string;
@@ -183,6 +184,13 @@ export function planPanel(ctx:Ctx){
    <p class="muted small">Send the amount, then send the screenshot to ${SUPPORT_EMAIL?h(SUPPORT_EMAIL):'the support address'}. A key comes back within ${h(KEY_TURNAROUND)}. Refunds within ${REFUND_WINDOW_DAYS} days, no questions asked.</p>`
    :`<p class="muted small">Payment details have not been published in this build. Nothing can be bought here yet — set them in <code>src/pricing.ts</code> and state your refund terms before taking money.</p>`}
   ${BUY_URL?`<p><a class="btn secondary" href="${h(BUY_URL)}" target="_blank" rel="noreferrer noopener">${icon('external-link')}Payment page</a></p>`:''}
+  ${serviceConfigured()?`<h3>Where should the key go?</h3>
+   <form id="subscribe-form" class="inline-form">
+    <input name="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Email address" required>
+    <button type="submit" class="btn primary">${icon('arrow-right')}Send me the key</button>
+   </form>
+   <p class="form-error"></p>
+   <p class="muted small">Your email address is the only thing Hisaab ever sends anywhere, and only when you press that button. We use it to send your key and occasional product news — nothing else, never sold, unsubscribe in one click. Your records, clients and figures stay on this device.</p>`:''}
  </section>`;
 }
 

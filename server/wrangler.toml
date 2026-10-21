@@ -1,0 +1,20 @@
+name = "hisaab"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+# Public, non-secret settings. Change ALLOWED_ORIGIN to wherever the app is served
+# from; several origins can be given, comma separated.
+[vars]
+ALLOWED_ORIGIN = "https://haiderimran019.github.io"
+PUBLIC_BASE = "https://hisaab.<your-subdomain>.workers.dev"
+MAIL_FROM = ""
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hisaab"
+database_id = "<run: wrangler d1 create hisaab, then paste the id here>"
+
+# Secrets are NOT set here. Set them once each, and they never appear in git:
+#   wrangler secret put RATE_SECRET     # any long random string
+#   wrangler secret put ADMIN_TOKEN     # a long random string you keep
+#   wrangler secret put RESEND_KEY      # optional, only to send confirmation mail

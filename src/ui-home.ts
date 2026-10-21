@@ -81,10 +81,10 @@ export function homeView(ctx:Ctx,estimated:{reserve:number;balance:number;reason
     :`<button class="btn primary big" data-page="Reports">Make the pack ${icon('arrow-right')}</button>`}
   </div>
   <div class="hero-progress">
-   <div class="ring" style="--pct:${Math.round(doneCount/list.length*100)}">
-    <span><b>${doneCount}</b><small>of ${list.length}</small></span>
+   <div class="rail" role="img" aria-label="${doneCount} of ${list.length} steps done">
+    ${list.map(s=>`<i class="${s.done?'on':''}"></i>`).join('')}
    </div>
-   <p>steps done</p>
+   <p><b>${doneCount} of ${list.length}</b> steps done</p>
   </div>
  </section>
 

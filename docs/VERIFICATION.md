@@ -2,7 +2,7 @@
 
 ## Completed
 
-- `npm test`: 86 passing tests (27 original, 36 with the paid workflow, 23 with two-factor and the review tick) covering precise settlement, decimal rounding, fees exceeding proceeds, PKR rate validation, invalid dates and July–June boundaries, every business-slab boundary, surcharge threshold, unsupported years, 154A rates/conditions including the PSEB sales-return exception, separate tax bases, withholding segregation, unsupported profiles, expense allocation, strict schemas, CSV formula injection, HTML escaping, zero confirmed export bases, unsafe aggregate precision, AJK/GB review gate and authenticated encrypted-backup round trips/tampering/wrong passphrases.
+- `npm test`: 88 passing tests in the app (27 original, 36 with the paid workflow, 23 with two-factor and the review tick, 2 for unnamed income), plus 15 in `server/` covering precise settlement, decimal rounding, fees exceeding proceeds, PKR rate validation, invalid dates and July–June boundaries, every business-slab boundary, surcharge threshold, unsupported years, 154A rates/conditions including the PSEB sales-return exception, separate tax bases, withholding segregation, unsupported profiles, expense allocation, strict schemas, CSV formula injection, HTML escaping, zero confirmed export bases, unsafe aggregate precision, AJK/GB review gate and authenticated encrypted-backup round trips/tampering/wrong passphrases.
 - `npm run build`: TypeScript check and Vite production build pass.
 - Dependency installation audit: zero vulnerabilities in the installed dependency tree at installation. This is a point-in-time package audit, not a penetration test.
 - Browser: income creation, editing and search with a six-decimal FX rate; script-shaped text safely rendered; expense business-use allocation; invoice creation, quantity × price and print preview; encrypted-vault setup with isolated synthetic QA data; no demo copied into vault; persistence across reload; locked reload; wrong-passphrase rejection; successful unlock; encrypted backup download; restore consent rejection and successful authenticated restore.
@@ -40,6 +40,22 @@
 - Clock-skew behaviour was tested by moving the timestamp, not by changing a device clock.
 - Screen-reader and keyboard-only passes over the new interface have not been done; no accessibility audit has been performed.
 - The new interface has not been tested on a real phone browser, only at phone dimensions in a desktop engine.
+
+## Added 21 October 2026 — reported bugs, unnamed income, the service
+
+- **Sidebar could not be scrolled.** With nine navigation entries the fixed-height column overflowed on a short window and the last items were unreachable. It now scrolls, with the bar hidden so it does not steal width from the labels; verified by scrolling to the end and measuring that the last control is on screen, and that the workspace switcher is back to a single line.
+- **Printed invoices were clipped at the right edge.** The sheet ran to the paper edge with no page margin. Added `@page{margin:14mm}`, fixed table layout for print, and wrapping for long figures. Verified at 375 px: the paper is 351 px inside a 375 px viewport, no horizontal overflow, the table does not exceed the sheet, the preview scrolls to its end and its toolbar stays reachable.
+- **Income with no client name.** `client` is now optional; blank reads as "No client recorded" rather than an empty cell, with a plain-text fallback in the aria-labels and an em dash in the avatar. Two tests assert a blank and a whitespace-only name both save, still count as domestic business income, and still reach the estimate.
+- `server/`: 15 tests, no network and no wrangler needed, run against an in-memory store double. They cover the refusal of seven realistic financial payloads, extra fields on sign-up, beacon date and plan validation, rate limiting actually biting, the rate key not being reversible to an IP, consent and double opt-in, identical responses for a repeated sign-up, email validation, unguessable confirmation links, foreign-origin rejection, admin token checks, and malformed or oversized bodies returning no stack trace.
+- `npx tsc --noEmit` passes in both the app and `server/`.
+
+### Not verified for this change
+
+- **The service has never been deployed or run against real D1.** Everything is tested against the in-memory double, so the SQL in `d1Store` — in particular the `on conflict` upserts and the `julianday` date window — is unexercised. Run `npm run db:init:local` and `wrangler dev` before trusting it.
+- No confirmation email has ever been sent. The Resend path is written but untested, and without `RESEND_KEY` addresses stay `pending` forever.
+- The usage ping has never reached a server; `API_BASE` is empty in this build so `pingOnce` returns early.
+- The printed output was checked in a desktop engine's print preview at phone dimensions, not by exporting a PDF from a real Android Chrome, which is where the clipping was reported.
+- The visual pass (flat surfaces, square corners, segmented progress rail, restrained accent) is a judgement call, not a measured result. No user has been asked whether it reads better.
 
 ## Limits
 

@@ -5,6 +5,7 @@ import {icon} from './format';
 import {RECOVERY_COUNT} from './totp';
 import type {ReviewStatus} from './review';
 import {REVIEWERS} from './review';
+import {serviceConfigured,pingEnabled} from './service';
 
 export type SecurityCtx={workspace:Workspace;review:ReviewStatus;twoFactorDraft:TwoFactorDraft|null;demo:boolean};
 export type TwoFactorDraft={secret:string;uri:string;codes:string[];confirmed:boolean};
@@ -46,6 +47,12 @@ export function securityPanel(ctx:SecurityCtx){
      <p>Blurs figures on Home so you can open this on a bus, in a café, or while sharing your screen.</p></div>
     <label class="switch"><input type="checkbox" id="blur-amounts" ${s.blurAmounts?'checked':''} ${ctx.demo?'disabled':''}><span></span></label>
    </div>
+
+   ${serviceConfigured()?`<div class="control">
+    <div><b>Count this installation</b>
+     <p>Once a day, Hisaab says that it was opened, which build it is, and whether it has a licence — and nothing else. No identifier of any kind is sent, so we can see a trend, never a person. Turning this off is not held against you and changes nothing in the app.</p></div>
+    <label class="switch"><input type="checkbox" id="usage-ping" ${pingEnabled()?'checked':''}><span></span></label>
+   </div>`:''}
 
    <div class="control">
     <div><b>Lock right now</b>
@@ -115,12 +122,18 @@ export function privacyNotice(){
    <li><b>Nowhere else:</b> there is no copy on any server of ours. Backups exist only where you save them.</li>
   </ul>
 
-  <h3>The only outside request this app can make</h3>
-  <p>If you press the reference exchange-rate button, your browser asks <code>open.er-api.com</code> for published rates. No financial data is sent — but like any web request, the provider necessarily sees your IP address and the time you asked. Turn on <b>Never touch the network</b> in Privacy and security and even that cannot happen.</p>
-  <p>Fonts and icons are served from the app itself. There are no analytics, no trackers, no advertising pixels, no cookies and no third-party scripts of any kind.</p>
+  <h3>Every outside request this app can make</h3>
+  <p>There are ${serviceConfigured()?'three':'two'}, and that is the complete list.</p>
+  <ol>
+   <li><b>Reference exchange rates</b>, only when you press the button for them: your browser asks <code>open.er-api.com</code> for published rates. No financial data is sent, but like any web request the provider necessarily sees your IP address and the time you asked. <b>Never touch the network</b> in Privacy and security stops even this.</li>
+   ${serviceConfigured()?`<li><b>A usage ping</b>, once a day: the date, which build you are running, and whether a licence is active. <b>No identifier of any kind is sent</b> — not a device id, not an account, not your address — so we can count how often Hisaab is opened but can never tell one person from another, or link two days together. Switch it off in Privacy and security and this stops entirely.</li>
+   <li><b>Your email address</b>, and only if you type it into the key form and press the button. It is used to send your licence key and occasional product news. We never sell it, you can unsubscribe in one click, and it is never connected to anything financial because we hold nothing financial.</li>`:''}
+  </ol>
+  <p>Fonts and icons are served from the app itself. There are no trackers, no advertising pixels, no cookies and no third-party scripts of any kind.${serviceConfigured()?'':' This build has no usage counting and no sign-up form, because no Hisaab service is configured in it.'}</p>
+  <p><b>What never leaves, under any setting:</b> your income, clients, invoices, expenses, bank accounts, statement lines, receipt images, tax figures and passphrase. There is no endpoint that accepts them — the service refuses any request carrying such a field, and there is a test that fires realistic ones at it to prove it.</p>
 
   <h3>What we know about paying customers</h3>
-  <p>If you buy a licence, we learn what you tell us when you pay: the name to put on the key, and whatever your payment method shows us. We keep that in our own sales ledger so we can honour renewals and refunds. The app never phones home to check your key — it is verified offline against a signature — so we cannot tell whether, when or how you use it.</p>
+  <p>If you buy a licence, we learn what you tell us when you pay: the name to put on the key, the email address to send it to, and whatever your payment method shows us. We keep that in our own sales ledger so we can honour renewals and refunds. The app never phones home to check your key — it is verified offline against a signature — so we cannot tell whether, when or how you use it, or even whether you still do.</p>
 
   <h3>What you are responsible for</h3>
   <ul>

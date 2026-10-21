@@ -5,11 +5,13 @@ Hisaab runs entirely in your browser. There is no account, no server holding you
 ## What is stored, and where
 - **On your device only:** your receipts, invoices, expenses, bank accounts, imported statement lines, attached receipt images, tax declarations, licence key and security settings. All of it is encrypted with a key derived from your passphrase and kept in this browser's local storage.
 - **Nowhere else:** there is no copy on any server of ours. Backups exist only where you save them.
-## The only outside request this app can make
-If you press the reference exchange-rate button, your browser asks `open.er-api.com` for published rates. No financial data is sent — but like any web request, the provider necessarily sees your IP address and the time you asked. Turn on **Never touch the network** in Privacy and security and even that cannot happen.
-Fonts and icons are served from the app itself. There are no analytics, no trackers, no advertising pixels, no cookies and no third-party scripts of any kind.
+## Every outside request this app can make
+There are two, and that is the complete list.
+- **Reference exchange rates**, only when you press the button for them: your browser asks `open.er-api.com` for published rates. No financial data is sent, but like any web request the provider necessarily sees your IP address and the time you asked. **Never touch the network** in Privacy and security stops even this.
+Fonts and icons are served from the app itself. There are no trackers, no advertising pixels, no cookies and no third-party scripts of any kind. This build has no usage counting and no sign-up form, because no Hisaab service is configured in it.
+**What never leaves, under any setting:** your income, clients, invoices, expenses, bank accounts, statement lines, receipt images, tax figures and passphrase. There is no endpoint that accepts them — the service refuses any request carrying such a field, and there is a test that fires realistic ones at it to prove it.
 ## What we know about paying customers
-If you buy a licence, we learn what you tell us when you pay: the name to put on the key, and whatever your payment method shows us. We keep that in our own sales ledger so we can honour renewals and refunds. The app never phones home to check your key — it is verified offline against a signature — so we cannot tell whether, when or how you use it.
+If you buy a licence, we learn what you tell us when you pay: the name to put on the key, the email address to send it to, and whatever your payment method shows us. We keep that in our own sales ledger so we can honour renewals and refunds. The app never phones home to check your key — it is verified offline against a signature — so we cannot tell whether, when or how you use it, or even whether you still do.
 ## What you are responsible for
 - **Your passphrase.** There is no reset and no recovery service. If you lose it, your workspace cannot be opened by us or by anyone.
 - **Your backups.** Clearing your browser data deletes the workspace. Export an encrypted backup and keep it somewhere safe.
@@ -27,4 +29,4 @@ Through the repository owner's GitHub contact. Please do not include passphrases
 
 ---
 
-This file and the Privacy page inside the app are generated from the same source (`src/ui-privacy.ts`), so they cannot drift apart.
+This file and the Privacy page inside the app are generated from the same source (`src/ui-privacy.ts`), so they cannot drift apart. It describes the build it ships with: a build with no Hisaab service configured has no usage counting and no sign-up form at all.

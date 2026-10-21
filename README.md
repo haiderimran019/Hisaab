@@ -70,6 +70,34 @@ Sold as an annual licence key — Easypaisa, JazzCash, Raast and bank transfer a
 - **Practitioner review tick:** a reviewer signs a certificate bound to your pack's fingerprint; the pack prints a verified tick with their name, registration and date. Change one figure and the tick turns amber by itself. No reviewer is published with this release, so no tick can be shown yet — not even by us.
 - **Responsive UI:** desktop side navigation, mobile bottom navigation, keyboard focus, reduced-motion support and labelled controls. Fonts are self-hosted.
 
+## The service (optional, and off by default)
+
+`server/` is a small Cloudflare Worker that does exactly two things and refuses a
+third.
+
+**It does:** hold email addresses people actively gave us — double opt-in,
+one-click unsubscribe — so licence keys and occasional updates can be sent; and
+count how often the app is opened.
+
+**It refuses:** anything financial. There is no endpoint, no accepted field and no
+database column for an amount, a client name, a statement row, a tax figure, or
+any identifier for a device or person. Every endpoint declares the exact fields it
+accepts and **rejects a body carrying anything else**, so a careless change on the
+client cannot start leaking records by accident. A test fires realistic payloads
+(`income`, `client`, `receipts`, `taxDue`, `lines`, `installId`) at it and asserts
+each one is refused.
+
+Usage counting sends **no identifier at all** — a date, a build string and a plan
+word — so the figures are *opens, not people*, and `/v1/stats` says so in its own
+response. One person on two browsers counts twice; anyone who switches it off
+counts zero. That undercount is the price of not putting a tracking id on a
+privacy-first product.
+
+`API_BASE` in [src/service.ts](src/service.ts) is empty by default, so **this build
+contacts nothing and shows no sign-up form**. Setting it is a deliberate act, and
+the privacy notice rewrites itself to describe whichever build ships. Deployment,
+secrets and what is still missing before it is a real service: [server/README.md](server/README.md).
+
 ## Pakistan rules, honestly scoped
 
 Rules were checked against official FBR publications on **21 October 2026**. The estimate shows its inputs, rule version, legal references and conditions. Unsupported years fail closed. Final liability is blocked when facts, classification or evidence require review. The app never treats a foreign payment-provider label as proof of tax eligibility.
@@ -99,6 +127,8 @@ See [SECURITY.md](SECURITY.md) for implemented controls, threat model, limitatio
 | `src/main.ts` | Local application state, forms, reports, print, optional public FX request |
 | `src/ui-statements.ts` | Views for statements, reconciliation, the plan panel and the pack gate |
 | `src/format.ts` | Shared number, date and icon formatting |
+| `src/service.ts` | The only code that may contact the service. An empty API base means it contacts nothing |
+| `server/` | The Worker: email list, usage counts, and no way to accept financial data |
 | `src/demo.ts` | Clearly labelled synthetic sample data, including a worked statement |
 | `src/style.css` | Responsive design and print styles |
 | `tools/make-license.mjs` | Publisher-side key generation, issuing and verification |

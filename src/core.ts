@@ -20,7 +20,7 @@ const rate = z.string().regex(/^\d{1,5}(\.\d{1,6})?$/).refine(v=>new Decimal(v).
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>!Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0,10)===v,'Invalid date');
 export const currencies = ['USD','GBP','EUR','AED','PKR'] as const;
 export const categories = ['it-export','service-export','domestic','social-media','other'] as const;
-export const receiptSchema = z.object({id:z.string().uuid(),date,client:text.min(1),description:text,currency:z.enum(currencies),gross:amount,fee:amount,rate,bankFee:amount,withheld:amount,rail:z.enum(['Payoneer','Wise','Bank transfer','Upwork','Fiverr','Other']),category:z.enum(categories),evidence:text,banking:z.boolean(),taxBase:amount,baseConfirmed:z.boolean()}).strict().superRefine((v,c)=>{
+export const receiptSchema = z.object({id:z.string().uuid(),date,client:text,description:text,currency:z.enum(currencies),gross:amount,fee:amount,rate,bankFee:amount,withheld:amount,rail:z.enum(['Payoneer','Wise','Bank transfer','Upwork','Fiverr','Other']),category:z.enum(categories),evidence:text,banking:z.boolean(),taxBase:amount,baseConfirmed:z.boolean()}).strict().superRefine((v,c)=>{
  if(new Decimal(v.gross).mul(v.rate).mul(100).gt(Number.MAX_SAFE_INTEGER))c.addIssue({code:'custom',message:'Converted amount exceeds safe precision',path:['gross']});
  if(new Decimal(v.fee).gt(v.gross)) c.addIssue({code:'custom',message:'Processor fee cannot exceed gross income',path:['fee']});
  if(v.baseConfirmed&&['it-export','service-export'].includes(v.category)&&new Decimal(v.taxBase).lte(0)) c.addIssue({code:'custom',message:'Confirmed export tax base must exceed zero',path:['taxBase']});
