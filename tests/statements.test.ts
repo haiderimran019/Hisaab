@@ -192,3 +192,92 @@ test('a statement line cannot reference an account that is not in the workspace'
  w.lines.push(...run(['Date,Description,Amount','2026-07-01,x,100'].join('\n'),acc).lines);
  assert.throws(()=>workspaceSchema.parse(w),/missing account/);
 });
+
+/* ── The running balance as a self-check ─────────────────────────────────── */
+
+test('a row whose amount was read wrongly is caught by the running balance', () => {
+ const csv=['Date,Description,Amount,Balance',
+  '2026-07-01,Opening payment,100000,110000',
+  '2026-07-02,Client payment,45000,155000',
+  '2026-07-03,Misread row,4500,200000',     // balance says +45,000 happened
+  '2026-07-04,Bank charge,-500,199500'].join('\n');
+ const out=run(csv);
+ assert.equal(out.chain.checked,true);
+ assert.equal(out.chain.breaks.length,1);
+ assert.equal(out.chain.breaks[0].row,4,'the fourth line of the file');
+ assert.equal(out.lines.find(l=>l.description==='Misread row'),undefined,'a row that fails arithmetic is not imported');
+ assert.equal(out.issues.length,1);
+ assert.match(out.issues[0].reason,/running balance does not agree/);
+ assert.equal(out.lines.length,3,'the rows either side are kept');
+});
+
+test('one bad row does not poison every row after it', () => {
+ const csv=['Date,Description,Amount,Balance',
+  '2026-07-01,A,1000,11000',
+  '2026-07-02,B,999,12000',      // wrong: balance implies 1000
+  '2026-07-03,C,1000,13000',
+  '2026-07-04,D,1000,14000'].join('\n');
+ const out=run(csv);
+ assert.equal(out.chain.breaks.length,1,'only the offending row is flagged');
+ assert.equal(out.chain.verified,2,'the chain resumes from the printed balance');
+ assert.deepEqual(out.lines.map(l=>l.description),['A','C','D']);
+});
+
+test('the running balance proves two identical payments are not a duplicate', () => {
+ const csv=['Date,Description,Amount,Balance',
+  '2026-07-01,Retainer ABC,50000,150000',
+  '2026-07-01,Retainer ABC,50000,200000'].join('\n');
+ const out=run(csv);
+ assert.equal(out.chain.rescued,1);
+ assert.equal(out.duplicates,0,'the second payment is not reported as a repeat');
+ assert.equal(out.lines.length,2);
+ assert.equal(out.lines[1].status,'pending');
+ assert.match(out.lines[1].note,/separate payment/);
+});
+
+test('a genuine re-import is still caught, because its balances are not chained to the first', () => {
+ const acc=account();
+ const csv=['Date,Description,Amount,Balance',
+  '2026-07-01,A,1000,11000',
+  '2026-07-02,B,1000,12000'].join('\n');
+ const first=run(csv,acc);
+ assert.equal(first.duplicates,0);
+ const second=run(csv,acc,first.lines);
+ assert.equal(second.duplicates,2,'importing the same file twice is still a repeat');
+ assert.equal(second.chain.rescued,0);
+});
+
+test('a file with no balance column is simply not chain-checked', () => {
+ const out=run(['Date,Description,Amount','2026-07-01,A,1000','2026-07-02,B,2000'].join('\n'));
+ assert.equal(out.chain.checked,false);
+ assert.equal(out.chain.breaks.length,0);
+ assert.equal(out.lines.length,2,'rows are still imported, just unverified');
+});
+
+test('a gap in the balance column ends the run instead of reporting a false break', () => {
+ const csv=['Date,Description,Amount,Balance',
+  '2026-07-01,A,1000,11000',
+  '2026-07-02,B,1000,',
+  '2026-07-03,C,1000,13000',
+  '2026-07-04,D,1000,14000'].join('\n');
+ const out=run(csv);
+ assert.equal(out.chain.breaks.length,0,'C cannot be checked against a missing balance');
+ assert.equal(out.chain.verified,1,'only D follows a known balance');
+ assert.equal(out.lines.length,4);
+});
+
+test('a verified chain and the account reconciliation agree with each other', () => {
+ const w=blankWorkspace();
+ const acc=account({opening:'10000.00',closing:'14000.00'});
+ w.accounts.push(acc);
+ const out=run(['Date,Description,Amount,Balance',
+  '2026-07-01,A,1000,11000',
+  '2026-07-02,B,1000,12000',
+  '2026-07-03,C,2000,14000'].join('\n'),acc);
+ assert.equal(out.chain.breaks.length,0);
+ for(const l of out.lines)l.status='income';
+ w.lines.push(...out.lines);
+ const r=reconcile(w,acc.id);
+ assert.equal(r.balanced,true,'the chain and the opening/closing balances tell the same story');
+ assert.equal(r.computedClosing,14000);
+});

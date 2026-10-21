@@ -8,6 +8,7 @@
    figure. See server/src/validate.ts and server/schema.sql. */
 import {readBeacon,readSubscribe,onlyKeys,randomToken,rateKey,err,type Result} from './validate';
 import {d1Store,type Store,type Subscriber} from './store';
+import {readExtractRequest,licenceAllows,readModelRows,providerFor} from './extract';
 
 export type Env={
  DB:unknown;
@@ -17,10 +18,15 @@ export type Env={
  RESEND_KEY?:string;         // optional: without it, confirmation emails are skipped
  MAIL_FROM?:string;          // e.g. Hisaab <hello@yourdomain.pk>
  PUBLIC_BASE?:string;        // where /v1/confirm lives, for the link in the email
+ LICENCE_PUBLIC_KEY?:string; // the JWK from src/license.ts, so paid features are checked here
+ MODEL_PROVIDER?:string;     // 'gemini' or 'anthropic'. Unset = document reading is off
+ MODEL_NAME?:string;
+ MODEL_KEY?:string;
 };
 
 const BEACON_LIMIT=20;       // pings per IP per day
 const SUBSCRIBE_LIMIT=5;     // sign-ups per IP per day
+const EXTRACT_LIMIT=12;      // documents per IP per day
 const todayUtc=()=>new Date().toISOString().slice(0,10);
 
 const json=(body:unknown,status=200,origin='*')=>new Response(JSON.stringify(body),{
@@ -129,6 +135,38 @@ export async function handle(request:Request,env:Env,store:Store):Promise<Respon
    return changed
     ?html('<h1>Unsubscribed</h1><p>We will not email that address again. Nothing else of yours was ever here.</p>')
     :html('<h1>That link is not valid</h1>',404);
+  }
+
+  if(path==='/v1/extract'&&request.method==='POST'){
+   // Off unless a model is configured. A service with no key reads nothing.
+   if(!env.MODEL_PROVIDER||!env.MODEL_KEY||!env.MODEL_NAME)
+    return json({error:'Document reading is not switched on for this service.'},501,origin);
+   const limited=await store.bumpRate(await rateKey(ip,day,env.RATE_SECRET)+':x',day);
+   if(limited>EXTRACT_LIMIT)return json({error:'That is as many documents as this service reads from one place in a day.'},429,origin);
+   const parsed=readExtractRequest(await readJson(request));
+   if(!parsed.ok)return fail(parsed,origin);
+   const licence=await licenceAllows(parsed.value.licence,env.LICENCE_PUBLIC_KEY??'',day);
+   if(!licence.ok)return fail(licence,origin);
+   const provider=providerFor(env.MODEL_PROVIDER,env.MODEL_NAME,env.MODEL_KEY,parsed.value.mime,parsed.value.data);
+   if(!provider)return json({error:'This service is configured with a model provider it does not know.'},500,origin);
+   let text='';
+   try{
+    const upstream=await fetch(provider.url,{method:'POST',headers:provider.headers,body:JSON.stringify(provider.body)});
+    if(!upstream.ok){
+     // Never pass an upstream body back: it can echo the document.
+     console.error('extract upstream',provider.name,upstream.status);
+     return json({error:'The reader could not process that document. Try a clearer scan, or import a CSV.'},502,origin);
+    }
+    text=provider.pick(await upstream.json());
+   }catch{
+    return json({error:'The reader could not be reached. Try again shortly.'},502,origin);
+   }
+   const rows=readModelRows(text);
+   return json({
+    rows,
+    read:rows.length,
+    note:'These rows were read by a machine and nothing here has been checked. Hisaab will test them against the running balance on your statement, and you confirm every one. Nothing was stored by this service.'
+   },200,origin);
   }
 
   if(path.startsWith('/v1/admin/')){

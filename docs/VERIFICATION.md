@@ -2,7 +2,7 @@
 
 ## Completed
 
-- `npm test`: 88 passing tests in the app (27 original, 36 with the paid workflow, 23 with two-factor and the review tick, 2 for unnamed income), plus 15 in `server/` covering precise settlement, decimal rounding, fees exceeding proceeds, PKR rate validation, invalid dates and July–June boundaries, every business-slab boundary, surcharge threshold, unsupported years, 154A rates/conditions including the PSEB sales-return exception, separate tax bases, withholding segregation, unsupported profiles, expense allocation, strict schemas, CSV formula injection, HTML escaping, zero confirmed export bases, unsafe aggregate precision, AJK/GB review gate and authenticated encrypted-backup round trips/tampering/wrong passphrases.
+- `npm test`: 95 passing tests in the app, plus 28 in `server/` covering precise settlement, decimal rounding, fees exceeding proceeds, PKR rate validation, invalid dates and July–June boundaries, every business-slab boundary, surcharge threshold, unsupported years, 154A rates/conditions including the PSEB sales-return exception, separate tax bases, withholding segregation, unsupported profiles, expense allocation, strict schemas, CSV formula injection, HTML escaping, zero confirmed export bases, unsafe aggregate precision, AJK/GB review gate and authenticated encrypted-backup round trips/tampering/wrong passphrases.
 - `npm run build`: TypeScript check and Vite production build pass.
 - Dependency installation audit: zero vulnerabilities in the installed dependency tree at installation. This is a point-in-time package audit, not a penetration test.
 - Browser: income creation, editing and search with a six-decimal FX rate; script-shaped text safely rendered; expense business-use allocation; invoice creation, quantity × price and print preview; encrypted-vault setup with isolated synthetic QA data; no demo copied into vault; persistence across reload; locked reload; wrong-passphrase rejection; successful unlock; encrypted backup download; restore consent rejection and successful authenticated restore.
@@ -56,6 +56,19 @@
 - The usage ping has never reached a server; `API_BASE` is empty in this build so `pingOnce` returns early.
 - The printed output was checked in a desktop engine's print preview at phone dimensions, not by exporting a PDF from a real Android Chrome, which is where the clipping was reported.
 - The visual pass (flat surfaces, square corners, segmented progress rail, restrained accent) is a judgement call, not a measured result. No user has been asked whether it reads better.
+
+## Added 21 October 2026 — the balance chain, document reading, trust defaults
+
+- **Balance-chain verification.** Where a statement carries a running balance, every row must satisfy `balance[n] = balance[n-1] + amount[n]`. Seven tests cover it: a misread amount caught at the right row and kept out of the ledger; one bad row not poisoning the rows after it (the chain resumes from the printed balance); two identical same-day payments proved genuine and un-flagged as duplicates; a whole file imported twice still caught as a repeat; a file with no balance column simply not checked; a gap in the column ending the run rather than reporting a false break; and the chain agreeing with the account reconciliation. Verified in the browser with a statement containing a deliberate misread row and a real same-day repeat — both handled exactly as designed, with the expected and found figures shown.
+- **`POST /v1/extract`.** 13 further server tests: refused entirely when no model is configured; licence signature verified in the Worker with forged, foreign-signed, expired and free-plan keys all refused; only PDF/PNG/JPEG accepted and extra fields rejected; model output parsed strictly so malformed rows are discarded rather than repaired; prose, broken JSON and fenced code handled; row count capped; both Gemini and Anthropic request shapes correct and sending the file as a document rather than as text; the response labelled as unchecked; an upstream error body never relayed back (asserted against a body containing an account number); and per-IP rate limiting.
+- **Trust defaults.** Usage counting is now opt-in and off by default — `pingEnabled()` returns true only for an explicit opt-in key, and there is no default-on path in the file. The email ask is labelled as optional with an alternative. Trust statements added to the lock screen and the privacy panel. The privacy notice and `docs/PRIVACY.md` regenerated from the same source.
+
+### Not verified for this change
+
+- **`/v1/extract` has never called a real model.** Every test uses a fake `fetch`. The Gemini and Anthropic request shapes are written from their documented formats and have not been sent to either API, so the first real call may need adjusting.
+- **No real bank statement PDF has been read.** Extraction quality, and therefore how often the balance chain catches a misread, is completely unmeasured. That number is the one that decides whether this feature is usable, and it can only be found with real documents.
+- The balance chain only helps where a statement prints a running balance. Statements without one are imported unverified, and the import screen says so.
+- The service is still undeployed; none of the endpoints has run against real D1.
 
 ## Limits
 

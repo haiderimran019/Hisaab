@@ -33,12 +33,42 @@ putting a tracking id on a privacy-first product, and it is the right trade.
 | `POST /v1/subscribe` | `{email, consent: true, source?}` — pending until confirmed |
 | `GET /v1/confirm?token=` | double opt-in |
 | `GET /v1/unsubscribe?token=` | one click, no login |
+| `POST /v1/extract` | a PDF or photo of a statement, read into proposed rows |
 | `GET /v1/admin/subscribers` | bearer `ADMIN_TOKEN` |
 | `POST /v1/admin/purge` | clears yesterday's rate-limit rows |
 
 Browser callers must come from `ALLOWED_ORIGIN`. IP addresses are never stored:
 rate limiting uses a truncated SHA-256 of the IP with a salt that rotates daily,
 and those rows are purged with the day.
+
+## Reading documents (`/v1/extract`)
+
+For customers whose bank only gives PDFs. Four rules hold it together:
+
+1. **Nothing is stored.** The file lives in memory for one request, is forwarded, and is dropped. No table, no log line, no copy. An upstream error body is never relayed back, because it can echo the document.
+2. **Nothing is trusted.** The model's reply is parsed strictly — a row without an ISO date and a numeric amount is discarded, never repaired. Rows come back as *proposals*.
+3. **Arithmetic decides, then a person.** The client runs the returned rows through the running-balance check (`verifyBalances` in `src/statements.ts`). A misread digit breaks the chain at exactly that row and it is set aside. The model never writes into a ledger.
+4. **Paid, and checked here.** The licence signature is verified in the Worker, not taken on trust from the browser.
+
+It is **off** unless `MODEL_PROVIDER`, `MODEL_NAME` and `MODEL_KEY` are all set — a service without them returns 501 and reads nothing.
+
+```bash
+npx wrangler secret put MODEL_KEY
+# then in wrangler.toml [vars]:
+#   MODEL_PROVIDER = "gemini"      (or "anthropic")
+#   MODEL_NAME     = "<model id>"
+#   LICENCE_PUBLIC_KEY = '<the JWK from src/license.ts>'
+```
+
+Before switching it on, satisfy yourself about the provider's current retention
+and training terms for the **paid** tier — they differ from the free tier, and
+that difference is the whole argument for whether sending a customer's statement
+is acceptable. Read the terms yourself; do not take anyone's summary, including
+this file's.
+
+Cost: a long statement is a lot of tokens. At PKR 2,400/year per customer,
+uncapped extraction will eat the margin. The per-IP cap here is 12 a day; add a
+per-licence annual cap before you advertise it.
 
 ## Deploying it
 

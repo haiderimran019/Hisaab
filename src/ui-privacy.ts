@@ -15,7 +15,13 @@ export function securityPanel(ctx:SecurityCtx){
  const draft=ctx.twoFactorDraft;
  return `<section class="panel settings-panel">
   <h2>Privacy and security</h2>
-  <p>Everything below happens on this device. Hisaab has no server to send any of it to.</p>
+  <p>Everything below happens on this device.</p>
+  <ul class="trust-list">
+   <li>${icon('shield-check')}<span><b>We cannot see your money.</b> Your income, clients, invoices, expenses and statements are encrypted here and never sent anywhere. There is no server that would accept them even if the app tried.</span></li>
+   <li>${icon('lock-keyhole')}<span><b>No account, no sign-up, no password of ours.</b> You do not hand us an identity to lose.</span></li>
+   <li>${icon('circle-help')}<span><b>Nothing is reported to anyone.</b> Hisaab is not connected to FBR, your bank, or any payment provider, and it never files or pays anything on your behalf.</span></li>
+   <li>${icon('check')}<span><b>Everything that touches the internet is off until you switch it on</b>, and each one is listed below.</span></li>
+  </ul>
 
   <div class="control-list">
    <div class="control">
@@ -49,8 +55,8 @@ export function securityPanel(ctx:SecurityCtx){
    </div>
 
    ${serviceConfigured()?`<div class="control">
-    <div><b>Count this installation</b>
-     <p>Once a day, Hisaab says that it was opened, which build it is, and whether it has a licence — and nothing else. No identifier of any kind is sent, so we can see a trend, never a person. Turning this off is not held against you and changes nothing in the app.</p></div>
+    <div><b>Count this installation</b> <span class="opt-tag">off unless you turn it on</span>
+     <p>Once a day, Hisaab would say that it was opened, which build it is, and whether it has a licence — and nothing else. No identifier of any kind is sent, so we could see a trend, never a person. It is off by default and we would rather undercount than take a number from you without asking. Nothing in the app changes either way.</p></div>
     <label class="switch"><input type="checkbox" id="usage-ping" ${pingEnabled()?'checked':''}><span></span></label>
    </div>`:''}
 
@@ -126,11 +132,13 @@ export function privacyNotice(){
   <p>There are ${serviceConfigured()?'three':'two'}, and that is the complete list.</p>
   <ol>
    <li><b>Reference exchange rates</b>, only when you press the button for them: your browser asks <code>open.er-api.com</code> for published rates. No financial data is sent, but like any web request the provider necessarily sees your IP address and the time you asked. <b>Never touch the network</b> in Privacy and security stops even this.</li>
-   ${serviceConfigured()?`<li><b>A usage ping</b>, once a day: the date, which build you are running, and whether a licence is active. <b>No identifier of any kind is sent</b> — not a device id, not an account, not your address — so we can count how often Hisaab is opened but can never tell one person from another, or link two days together. Switch it off in Privacy and security and this stops entirely.</li>
-   <li><b>Your email address</b>, and only if you type it into the key form and press the button. It is used to send your licence key and occasional product news. We never sell it, you can unsubscribe in one click, and it is never connected to anything financial because we hold nothing financial.</li>`:''}
+   ${serviceConfigured()?`<li><b>A usage ping</b>, once a day, <b>only if you switch it on</b> — it is off until you do. It carries the date, which build you are running, and whether a licence is active. <b>No identifier of any kind is sent</b>, so we can count how often Hisaab is opened but can never tell one person from another, or link two days together.</li>
+   <li><b>Your email address</b>, only if you type it into the key form and press the button. It is used to send your licence key and occasional product news. We never sell it, one click unsubscribes, and it is never connected to anything financial because we hold nothing financial. You do not need to give one at all — a key can reach you any way you like.</li>
+   <li><b>A statement you choose to have read</b>, only when you pick a PDF or photo and confirm the warning on that screen. That file goes to the reading service named in the dialog and is used to transcribe the rows; it is not stored by us, and the rows come back as proposals that you check and confirm. Everything about this is off unless you start it, and CSV import never involves it.</li>`:''}
   </ol>
   <p>Fonts and icons are served from the app itself. There are no trackers, no advertising pixels, no cookies and no third-party scripts of any kind.${serviceConfigured()?'':' This build has no usage counting and no sign-up form, because no Hisaab service is configured in it.'}</p>
-  <p><b>What never leaves, under any setting:</b> your income, clients, invoices, expenses, bank accounts, statement lines, receipt images, tax figures and passphrase. There is no endpoint that accepts them — the service refuses any request carrying such a field, and there is a test that fires realistic ones at it to prove it.</p>
+  <p><b>What never leaves, under any setting:</b> your income records, clients, invoices, expenses, bank accounts, statement lines, tax figures and passphrase. There is no endpoint that accepts them — the service refuses any request carrying such a field, and there is a test that fires realistic ones at it to prove it. The one exception you can create yourself is a document you deliberately send to be read, and that screen says so before anything moves.</p>
+  <p><b>Hisaab is not connected to FBR, to your bank, or to any payment provider.</b> It cannot file a return, pay a tax, move money, or tell anyone anything about you. It is a private notebook that does arithmetic.</p>
 
   <h3>What we know about paying customers</h3>
   <p>If you buy a licence, we learn what you tell us when you pay: the name to put on the key, the email address to send it to, and whatever your payment method shows us. We keep that in our own sales ledger so we can honour renewals and refunds. The app never phones home to check your key — it is verified offline against a signature — so we cannot tell whether, when or how you use it, or even whether you still do.</p>

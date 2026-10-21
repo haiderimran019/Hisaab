@@ -7,8 +7,10 @@
    - No identifier is sent. Not an install id, not a device id, not an email. The
      service therefore counts opens, not people, and we say so rather than
      pretending otherwise.
-   - The opt-out lives in plain localStorage, not in the encrypted workspace, so
-     it is honoured before anything is unlocked and in the demo too.
+   - Counting is **off until someone turns it on**. An undercount we can explain
+     beats a number we had to take from people without asking. The choice lives in
+     plain localStorage, not the encrypted workspace, so it is honoured before
+     anything is unlocked and in the demo too.
    - With no API base configured, every function here does nothing at all. That is
      the default, so a build nobody has deployed a service for is genuinely silent. */
 import type {LicenseStatus} from './license';
@@ -17,16 +19,17 @@ import type {LicenseStatus} from './license';
 export const API_BASE='';
 export const APP_VERSION='1.1.0';
 const PING_DAY_KEY='hisaab.ping.day';
-const PING_OFF_KEY='hisaab.ping.off';
+const PING_ON_KEY='hisaab.ping.on';
 
 export const serviceConfigured=()=>API_BASE.trim().length>0;
 
+/** Off unless the person said yes. There is no default-on path in this file. */
 export function pingEnabled(){
  if(!serviceConfigured())return false;
- try{return localStorage.getItem(PING_OFF_KEY)!=='1';}catch{return false;}
+ try{return localStorage.getItem(PING_ON_KEY)==='1';}catch{return false;}
 }
 export function setPingEnabled(on:boolean){
- try{on?localStorage.removeItem(PING_OFF_KEY):localStorage.setItem(PING_OFF_KEY,'1');}catch{/* storage blocked: stays off */}
+ try{on?localStorage.setItem(PING_ON_KEY,'1'):localStorage.removeItem(PING_ON_KEY);}catch{/* storage blocked: stays off */}
 }
 
 const planWord=(status:LicenseStatus)=>

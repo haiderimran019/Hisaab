@@ -143,10 +143,68 @@ export const fingerprint=(accountId:string,date:string,description:string,amount
  `${accountId}|${date}|${squash(description)}|${new Decimal(amount).toFixed(2)}`;
 
 export type RowIssue={row:number;reason:string;raw:string};
+/** Marks a row that repeats an earlier row of the same file. Only these can be
+    cleared by the running balance; a file imported twice never is. */
+export const REPEAT_IN_FILE='Looks like a repeat of an earlier row in this file.';
+export type ChainBreak={row:number;expected:string;found:string;description:string};
+export type BalanceChain={
+ /** false when the file has no balance column to check against. */
+ checked:boolean;
+ verified:number;
+ breaks:ChainBreak[];
+ /** Duplicates the running balance proved were real, separate transactions. */
+ rescued:number;
+};
 export type ParsedImport={
  lines:StatementLine[];issues:RowIssue[];duplicates:number;
- rowCount:number;mapping:Record<string,string>;header:string[];
+ rowCount:number;mapping:Record<string,string>;header:string[];chain:BalanceChain;
 };
+
+/* The running balance is arithmetic the source document already committed to, so
+   it is the one thing in a statement that can check itself. For every row,
+   balance should equal the previous balance plus this row's amount.
+
+   Two things fall out of that, and both matter more than they look:
+
+   1. A row whose amount or sign was read wrongly breaks the chain at exactly that
+      row. This is what makes it safe to accept rows from an unreliable reader —
+      a PDF, a scan, or a language model — because a misread digit cannot satisfy
+      arithmetic it did not control.
+   2. A row flagged as a duplicate *within one file* is proved genuine when the
+      balance still advances through it. Two identical payments on one day are
+      real and common; without this they would be silently dropped.
+
+   When a row breaks the chain we continue from the balance the document printed,
+   not from our own running total, so one bad row cannot poison every row after it. */
+export function verifyBalances(lines:StatementLine[]):BalanceChain{
+ const withBalance=lines.filter(l=>l.balance!=='');
+ if(withBalance.length<2)return {checked:false,verified:0,breaks:[],rescued:0};
+ const ordered=[...lines].sort((a,b)=>a.row-b.row);
+ let previous:Decimal|null=null;
+ let verified=0,rescued=0;
+ const breaks:ChainBreak[]=[];
+ for(const line of ordered){
+  if(line.balance===''){previous=null;continue;}   // a gap ends the run
+  const stated:Decimal=new Decimal(line.balance);
+  if(previous!==null){
+   const expected:Decimal=previous.plus(line.amount);
+   if(expected.equals(stated)){
+    verified++;
+    if(line.status==='duplicate'&&line.note===REPEAT_IN_FILE){
+     // The balance moved through it, so it is a separate transaction after all.
+     line.status='pending';
+     line.note='Looked like a repeat, but the running balance proves it is a separate payment.';
+     rescued++;
+    }
+   }else{
+    breaks.push({row:line.row,expected:expected.toFixed(2),found:stated.toFixed(2),
+     description:line.description.slice(0,80)});
+   }
+  }
+  previous=stated;   // trust the document's own figure going forward
+ }
+ return {checked:true,verified,breaks,rescued};
+}
 
 export function buildImport(opts:{
  account:Account;existing:StatementLine[];rows:string[][];headerIndex:number;
@@ -187,7 +245,8 @@ export function buildImport(opts:{
   if(amount.isZero()){issues.push({row,reason:'Amount is zero — check whether this row is a header, total or carried balance',raw:joined});return;}
   const description=cell(raw,mapping.description)||cell(raw,mapping.counterparty)||'(no description)';
   const fp=fingerprint(account.id,date,description,amount.toFixed(2));
-  const isDuplicate=seen.has(fp)||withinFile.has(fp);
+  const alreadyImported=seen.has(fp),repeatedInFile=withinFile.has(fp);
+  const isDuplicate=alreadyImported||repeatedInFile;
   if(isDuplicate)duplicates++;
   withinFile.add(fp);
   lines.push(lineSchema.parse({
@@ -195,12 +254,24 @@ export function buildImport(opts:{
    description:description.slice(0,400),counterparty:cell(raw,mapping.counterparty).slice(0,400),
    amount:amount.toFixed(2),balance:(()=>{const b=parseAmount(cell(raw,mapping.balance));return b?b.toFixed(2):'';})(),
    fingerprint:fp,status:isDuplicate?'duplicate':'pending',linkedId:'',
-   note:isDuplicate?'Matches a line already imported for this account.':'',row
+   note:alreadyImported?'Matches a line already imported for this account.'
+    :repeatedInFile?REPEAT_IN_FILE:'',row
   }));
  });
+ // Only rows from this file are chained; previously imported lines are not in order here.
+ const chain=verifyBalances(lines);
+ for(const broken of chain.breaks){
+  const index=lines.findIndex(l=>l.row===broken.row);
+  if(index<0)continue;
+  lines.splice(index,1);
+  issues.push({row:broken.row,
+   reason:`The running balance does not agree with this row: the statement shows ${broken.found} where ${broken.expected} would follow from the previous line. Check this row on your statement and enter it by hand.`,
+   raw:broken.description});
+ }
  const mappingRecord:Record<string,string>={};
  for(const [field,index] of Object.entries(mapping))if(index!==undefined)mappingRecord[field]=header[index as number]??`column ${(index as number)+1}`;
- return {lines,issues,duplicates,rowCount:body.filter(r=>r.some(c=>c.trim()!=='')).length,mapping:mappingRecord,header};
+ return {lines,issues,duplicates:lines.filter(l=>l.status==='duplicate').length,
+  rowCount:body.filter(r=>r.some(c=>c.trim()!=='')).length,mapping:mappingRecord,header,chain};
 }
 
 /** Opposite, equal-sized movements close together in time are very likely a

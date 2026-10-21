@@ -135,7 +135,11 @@ export function importDrawerBody(ctx:Ctx){
  </form>
  ${d.error?`<p class="form-error visible">${h(d.error)}</p>`:''}
  ${preview?`<div class="import-preview">
-  <h3>${preview.lines.length} line${preview.lines.length===1?'':'s'} read${preview.duplicates?` · ${preview.duplicates} already imported`:''}${preview.issues.length?` · ${preview.issues.length} row${preview.issues.length===1?'':'s'} unreadable`:''}</h3>
+  <h3>${preview.lines.length} line${preview.lines.length===1?'':'s'} read${preview.duplicates?` · ${preview.duplicates} already imported`:''}${preview.issues.length?` · ${preview.issues.length} row${preview.issues.length===1?'':'s'} set aside`:''}</h3>
+  ${preview.chain.checked
+   ?`<p class="chain-note ${preview.chain.breaks.length?'warn':'ok'}">${icon(preview.chain.breaks.length?'octagon-alert':'check')}
+     <span>Checked against the running balance on your statement: <b>${preview.chain.verified}</b> row${preview.chain.verified===1?'':'s'} add up exactly${preview.chain.breaks.length?`, and <b>${preview.chain.breaks.length}</b> did not — those are listed below rather than imported`:''}.${preview.chain.rescued?` ${preview.chain.rescued} row${preview.chain.rescued===1?' that looked like a repeat was':'s that looked like repeats were'} confirmed genuine by the balance.`:''}</span></p>`
+   :`<p class="chain-note">${icon('circle-help')}<span>This file has no running balance column, so the amounts cannot be checked against the statement's own arithmetic. They are imported as read — look them over before you classify them.</span></p>`}
   <div class="table-scroll"><table><thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Balance</th><th>State</th></tr></thead><tbody>
   ${preview.lines.slice(0,8).map(l=>`<tr><td>${h(l.date)}</td><td>${h(l.description.slice(0,70))}</td><td>${amountCell(l.amount,account?.currency??'PKR')}</td><td>${l.balance?num(Number(l.balance)):'—'}</td><td>${statusChip(l.status)}</td></tr>`).join('')}
   </tbody></table></div>
@@ -190,7 +194,7 @@ export function planPanel(ctx:Ctx){
     <button type="submit" class="btn primary">${icon('arrow-right')}Send me the key</button>
    </form>
    <p class="form-error"></p>
-   <p class="muted small">Your email address is the only thing Hisaab ever sends anywhere, and only when you press that button. We use it to send your key and occasional product news — nothing else, never sold, unsubscribe in one click. Your records, clients and figures stay on this device.</p>`:''}
+   <p class="muted small"><b>Only if you want it by email.</b> Pay however suits you and send the receipt — the key can come back the same way, on WhatsApp or anywhere else. If you do give an address, it is used for your key and occasional product news, nothing else, never sold, and one click unsubscribes. It is never attached to anything financial, because we hold nothing financial.</p>`:''}
  </section>`;
 }
 

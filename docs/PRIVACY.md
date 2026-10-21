@@ -9,7 +9,8 @@ Hisaab runs entirely in your browser. There is no account, no server holding you
 There are two, and that is the complete list.
 - **Reference exchange rates**, only when you press the button for them: your browser asks `open.er-api.com` for published rates. No financial data is sent, but like any web request the provider necessarily sees your IP address and the time you asked. **Never touch the network** in Privacy and security stops even this.
 Fonts and icons are served from the app itself. There are no trackers, no advertising pixels, no cookies and no third-party scripts of any kind. This build has no usage counting and no sign-up form, because no Hisaab service is configured in it.
-**What never leaves, under any setting:** your income, clients, invoices, expenses, bank accounts, statement lines, receipt images, tax figures and passphrase. There is no endpoint that accepts them — the service refuses any request carrying such a field, and there is a test that fires realistic ones at it to prove it.
+**What never leaves, under any setting:** your income records, clients, invoices, expenses, bank accounts, statement lines, tax figures and passphrase. There is no endpoint that accepts them — the service refuses any request carrying such a field, and there is a test that fires realistic ones at it to prove it. The one exception you can create yourself is a document you deliberately send to be read, and that screen says so before anything moves.
+**Hisaab is not connected to FBR, to your bank, or to any payment provider.** It cannot file a return, pay a tax, move money, or tell anyone anything about you. It is a private notebook that does arithmetic.
 ## What we know about paying customers
 If you buy a licence, we learn what you tell us when you pay: the name to put on the key, the email address to send it to, and whatever your payment method shows us. We keep that in our own sales ledger so we can honour renewals and refunds. The app never phones home to check your key — it is verified offline against a signature — so we cannot tell whether, when or how you use it, or even whether you still do.
 ## What you are responsible for
@@ -29,4 +30,4 @@ Through the repository owner's GitHub contact. Please do not include passphrases
 
 ---
 
-This file and the Privacy page inside the app are generated from the same source (`src/ui-privacy.ts`), so they cannot drift apart. It describes the build it ships with: a build with no Hisaab service configured has no usage counting and no sign-up form at all.
+This file and the Privacy page inside the app are generated from the same source (`src/ui-privacy.ts`), so they cannot drift apart. It describes the build it ships with: a build with no Hisaab service configured has no usage counting, no sign-up form and no document reading at all.
