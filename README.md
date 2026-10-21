@@ -8,6 +8,8 @@ Invoices, multi-currency income, actual PKR settlement after fees, expense evide
 
 ## Use it
 
+**[Open the public app](https://haiderimran019.github.io/Hisaab/)** — no GitHub or ChatGPT account required. Each visitor has a separate encrypted workspace in their own browser.
+
 ```bash
 npm ci
 npm run dev
@@ -55,6 +57,12 @@ See [SECURITY.md](SECURITY.md) for implemented controls, threat model, limitatio
 | `src/style.css` | Responsive design and print styles |
 
 Inputs and units are documented in the [feature/algorithm plan](docs/PLAN.md). Money uses decimal arithmetic with half-up rounding to two PKR decimals; per-unit FX supports six decimals. The selected tax year controls July–June receipt and expense reporting. Tax-profile confirmations are year-specific. Foreign amounts, tax bases and withholding remain distinct.
+
+## Public hosting
+
+GitHub Pages serves the compiled `dist/` artifact through `.github/workflows/checks.yml`. Tests, build and the production dependency audit must pass before deployment. Pull requests only validate; pushes to `main` publish the verified build. Repository Pages settings must use **GitHub Actions**, not the raw source branch.
+
+The public app has no shared financial-data backend and does not expose another visitor's records. Browser storage is specific to the site origin. GitHub Pages does not apply `public/_headers`; the HTML CSP remains active, while HTTP headers such as `frame-ancestors` require a supporting host or proxy.
 
 ## Release status
 
