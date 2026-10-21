@@ -32,12 +32,12 @@ const attachment = z.object({name:text,mime:z.enum(['image/png','image/jpeg','ap
 export const expenseSchema=z.object({id:z.string().uuid(),date,vendor:text.min(1),category:z.enum(['Software','Internet','Equipment','Office','Travel','Other']),amount,currency:z.enum(currencies),rate,businessPct:z.number().min(0).max(100),deductible:z.boolean(),evidence:text,receipt:attachment}).strict().superRefine((v,c)=>{if(v.currency==='PKR'&&!new Decimal(v.rate).eq(1))c.addIssue({code:'custom',message:'PKR rate must be 1',path:['rate']});});
 export const invoiceSchema=z.object({id:z.string().uuid(),number:text.min(1),issuer:text.min(1),client:text.min(1),email:z.union([z.literal(''),z.string().email().max(200)]),description:text.min(1),date,due:date,currency:z.enum(currencies),quantity:z.number().positive().max(100000),unitPrice:amount,status:z.enum(['Draft','Sent','Paid']),notes:text}).strict().refine(v=>v.due>=v.date,{message:'Due date cannot precede issue date',path:['due']});
 export const profileSchema=z.object({confirmedYear:z.union([z.literal(2026),z.literal(2027)]),name:text,province:z.enum(['Punjab','Sindh','Khyber Pakhtunkhwa','Balochistan','Islamabad','AJK / GB']),resident:z.boolean(),pseb:z.boolean(),returnFiled:z.boolean(),statementsFiled:z.boolean(),salesReturns:z.boolean(),noForeignCredit:z.boolean(),noOptOut:z.boolean(),simpleBusiness:z.boolean(),otherIncome:z.boolean(),deductionsReviewed:z.boolean(),provinceReviewed:z.boolean()}).strict();
-export const workspaceSchema=z.object({version:z.literal(1),profile:profileSchema,receipts:z.array(receiptSchema).max(2000),expenses:z.array(expenseSchema).max(2000),invoices:z.array(invoiceSchema).max(2000)}).strict().superRefine((v,c)=>{for(const k of ['receipts','expenses','invoices'] as const){if(new Set(v[k].map(x=>x.id)).size!==v[k].length)c.addIssue({code:'custom',message:'Duplicate record IDs',path:[k]});}const aggregate=[v.receipts.reduce((a,r)=>a.plus(new Decimal(r.gross).mul(r.rate)),new Decimal(0)),v.receipts.reduce((a,r)=>a.plus(r.taxBase),new Decimal(0)),v.expenses.reduce((a,e)=>a.plus(new Decimal(e.amount).mul(e.rate)),new Decimal(0)),v.invoices.reduce((a,i)=>a.plus(new Decimal(i.quantity).mul(i.unitPrice)),new Decimal(0))];if(aggregate.some(a=>a.mul(100).gt(Number.MAX_SAFE_INTEGER)))c.addIssue({code:'custom',message:'Aggregate amount exceeds safe precision',path:[]});if(new Set(v.invoices.map(x=>x.number)).size!==v.invoices.length)c.addIssue({code:'custom',message:'Duplicate invoice number',path:['invoices']});});
+export const workspaceV1Schema=z.object({version:z.literal(1),profile:profileSchema,receipts:z.array(receiptSchema).max(2000),expenses:z.array(expenseSchema).max(2000),invoices:z.array(invoiceSchema).max(2000)}).strict().superRefine((v,c)=>{for(const k of ['receipts','expenses','invoices'] as const){if(new Set(v[k].map(x=>x.id)).size!==v[k].length)c.addIssue({code:'custom',message:'Duplicate record IDs',path:[k]});}const aggregate=[v.receipts.reduce((a,r)=>a.plus(new Decimal(r.gross).mul(r.rate)),new Decimal(0)),v.receipts.reduce((a,r)=>a.plus(r.taxBase),new Decimal(0)),v.expenses.reduce((a,e)=>a.plus(new Decimal(e.amount).mul(e.rate)),new Decimal(0)),v.invoices.reduce((a,i)=>a.plus(new Decimal(i.quantity).mul(i.unitPrice)),new Decimal(0))];if(aggregate.some(a=>a.mul(100).gt(Number.MAX_SAFE_INTEGER)))c.addIssue({code:'custom',message:'Aggregate amount exceeds safe precision',path:[]});if(new Set(v.invoices.map(x=>x.number)).size!==v.invoices.length)c.addIssue({code:'custom',message:'Duplicate invoice number',path:['invoices']});});
 export type Receipt=z.infer<typeof receiptSchema>;
 export type Expense=z.infer<typeof expenseSchema>;
 export type Invoice=z.infer<typeof invoiceSchema>;
 export type Workspace=z.infer<typeof workspaceSchema>;
-export const blankWorkspace=():Workspace=>({version:1,profile:{confirmedYear:2027,name:'',province:'Punjab',resident:true,pseb:false,returnFiled:false,statementsFiled:false,salesReturns:false,noForeignCredit:false,noOptOut:false,simpleBusiness:false,otherIncome:false,deductionsReviewed:false,provinceReviewed:false},receipts:[],expenses:[],invoices:[]});
+export const blankWorkspace=():Workspace=>({version:2,accounts:[],batches:[],lines:[],license:{key:'',activatedAt:'',trialStarted:''},profile:{confirmedYear:2027,name:'',province:'Punjab',resident:true,pseb:false,returnFiled:false,statementsFiled:false,salesReturns:false,noForeignCredit:false,noOptOut:false,simpleBusiness:false,otherIncome:false,deductionsReviewed:false,provinceReviewed:false},receipts:[],expenses:[],invoices:[]});
 export const money=(v:Decimal.Value)=>{const d=new Decimal(v).toDecimalPlaces(2);if(!d.isFinite()||d.mul(100).abs().gt(Number.MAX_SAFE_INTEGER))throw Error('Amount exceeds safe PKR precision. Split or review this workspace.');return d.toNumber();};
 export const sum=(values:Decimal.Value[])=>money(values.reduce<Decimal>((a,b)=>a.plus(b),new Decimal(0)));
 export function receiptMath(r:Receipt){const gross=new Decimal(r.gross).mul(r.rate),fees=new Decimal(r.fee).mul(r.rate).plus(r.bankFee);return {gross:money(gross),fees:money(fees),withheld:money(r.withheld),net:money(gross.minus(fees).minus(r.withheld))};}
@@ -74,3 +74,111 @@ export function estimate(w:Workspace,year:number){
 }
 export function csv(rows:unknown[][]){return '\uFEFF'+rows.map(row=>row.map(v=>{let s=String(v??'');if(/^[\s]*[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';}).join(',')).join('\r\n');}
 export const escapeHTML=(s:unknown)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
+
+/* ── Statements, accounts and reconciliation (schema v2) ────────────────────
+   Added for the paid import → review → reconcile → filing-pack workflow.
+   Signed amounts: positive is money into the account, negative is money out. */
+const signed = z.string().regex(/^-?\d{1,12}(\.\d{1,2})?$/, 'Use an amount with at most 2 decimals');
+const optionalSigned = z.union([z.literal(''), signed]);
+export const accountKinds = ['Bank','Mobile wallet','Payment processor','Cash'] as const;
+export const lineStatuses = ['pending','income','expense','transfer','excluded','duplicate'] as const;
+export type LineStatus = (typeof lineStatuses)[number];
+export const accountSchema=z.object({
+ id:z.string().uuid(),label:text.min(1),kind:z.enum(accountKinds),currency:z.enum(currencies),
+ institution:text,reference:text,
+ opening:signed,closing:signed,periodStart:date,periodEnd:date,balancesConfirmed:z.boolean()
+}).strict().refine(v=>v.periodEnd>=v.periodStart,{message:'Statement period end cannot precede its start',path:['periodEnd']});
+export const batchSchema=z.object({
+ id:z.string().uuid(),accountId:z.string().uuid(),filename:text.min(1),importedAt:z.string().min(10).max(40),
+ rowCount:z.number().int().min(0).max(8000),imported:z.number().int().min(0).max(8000),
+ skipped:z.number().int().min(0).max(8000),digest:z.string().max(128),mapping:z.record(z.string().max(120))
+}).strict();
+export const lineSchema=z.object({
+ id:z.string().uuid(),batchId:z.string().uuid(),accountId:z.string().uuid(),date,
+ description:text,counterparty:text,amount:signed,balance:optionalSigned,
+ fingerprint:z.string().min(1).max(300),status:z.enum(lineStatuses),
+ linkedId:z.string().max(64),note:text,row:z.number().int().min(0).max(8000)
+}).strict();
+export const licenseStateSchema=z.object({key:z.string().max(4000),activatedAt:z.string().max(40),trialStarted:z.string().max(40)}).strict();
+export type Account=z.infer<typeof accountSchema>;
+export type ImportBatch=z.infer<typeof batchSchema>;
+export type StatementLine=z.infer<typeof lineSchema>;
+
+export const workspaceSchema=z.object({
+ version:z.literal(2),profile:profileSchema,
+ receipts:z.array(receiptSchema).max(2000),expenses:z.array(expenseSchema).max(2000),invoices:z.array(invoiceSchema).max(2000),
+ accounts:z.array(accountSchema).max(40),batches:z.array(batchSchema).max(400),lines:z.array(lineSchema).max(8000),
+ license:licenseStateSchema
+}).strict().superRefine((v,c)=>{
+ for(const k of ['receipts','expenses','invoices','accounts','batches','lines'] as const)
+  if(new Set(v[k].map(x=>x.id)).size!==v[k].length)c.addIssue({code:'custom',message:'Duplicate record IDs',path:[k]});
+ if(new Set(v.invoices.map(x=>x.number)).size!==v.invoices.length)c.addIssue({code:'custom',message:'Duplicate invoice number',path:['invoices']});
+ const ids=new Set(v.accounts.map(a=>a.id));
+ for(const l of v.lines)if(!ids.has(l.accountId))c.addIssue({code:'custom',message:'Statement line references a missing account',path:['lines']});
+ for(const b of v.batches)if(!ids.has(b.accountId))c.addIssue({code:'custom',message:'Import batch references a missing account',path:['batches']});
+ const totals=[
+  v.receipts.reduce((a,r)=>a.plus(new Decimal(r.gross).mul(r.rate)),new Decimal(0)),
+  v.receipts.reduce((a,r)=>a.plus(r.taxBase),new Decimal(0)),
+  v.expenses.reduce((a,e)=>a.plus(new Decimal(e.amount).mul(e.rate)),new Decimal(0)),
+  v.invoices.reduce((a,i)=>a.plus(new Decimal(i.quantity).mul(i.unitPrice)),new Decimal(0)),
+  v.lines.reduce((a,l)=>a.plus(new Decimal(l.amount).abs()),new Decimal(0))
+ ];
+ if(totals.some(t=>t.mul(100).gt(Number.MAX_SAFE_INTEGER)))c.addIssue({code:'custom',message:'Aggregate amount exceeds safe precision',path:[]});
+});
+
+/** Bring an older stored workspace up to the current shape without losing records.
+    Unknown or newer versions are rejected by the schema rather than guessed at. */
+export function migrateWorkspace(value:unknown):unknown{
+ if(!value||typeof value!=='object')return value;
+ const w=value as Record<string,unknown>;
+ if(w.version===1){
+  const v1=workspaceV1Schema.parse(w);
+  return {version:2,profile:v1.profile,receipts:v1.receipts,expenses:v1.expenses,invoices:v1.invoices,
+   accounts:[],batches:[],lines:[],license:{key:'',activatedAt:'',trialStarted:''}};
+ }
+ return w;
+}
+export const parseWorkspace=(value:unknown):Workspace=>workspaceSchema.parse(migrateWorkspace(value));
+
+/** Per-account reconciliation. The unexplained difference is always reported;
+    it is never closed by inventing a balancing entry. */
+export function reconcile(w:Workspace,accountId:string){
+ const account=w.accounts.find(a=>a.id===accountId);
+ if(!account)throw Error('Unknown account');
+ const lines=w.lines.filter(l=>l.accountId===accountId&&l.status!=='duplicate');
+ const movement=lines.reduce((a,l)=>a.plus(l.amount),new Decimal(0));
+ const computed=new Decimal(account.opening).plus(movement);
+ const difference=new Decimal(account.closing).minus(computed);
+ const count=(s:LineStatus)=>w.lines.filter(l=>l.accountId===accountId&&l.status===s).length;
+ const inflow=lines.filter(l=>new Decimal(l.amount).gt(0)),outflow=lines.filter(l=>new Decimal(l.amount).lt(0));
+ return {
+  accountId,label:account.label,currency:account.currency,
+  opening:money(account.opening),closing:money(account.closing),
+  movement:money(movement),computedClosing:money(computed),difference:money(difference),
+  balanced:difference.abs().lte(new Decimal('0.01')),
+  inflow:money(inflow.reduce((a,l)=>a.plus(l.amount),new Decimal(0))),
+  outflow:money(outflow.reduce((a,l)=>a.plus(l.amount),new Decimal(0))),
+  lines:lines.length,
+  pending:count('pending'),income:count('income'),expense:count('expense'),
+  transfer:count('transfer'),excluded:count('excluded'),duplicates:count('duplicate'),
+  confirmed:account.balancesConfirmed
+ };
+}
+export type Reconciliation=ReturnType<typeof reconcile>;
+/** Workspace-wide readiness: what still blocks a dependable filing pack. */
+export function readiness(w:Workspace,year:number){
+ const blockers:string[]=[],notes:string[]=[];
+ const pending=w.lines.filter(l=>l.status==='pending').length;
+ if(pending)blockers.push(`${pending} imported statement line${pending===1?'':'s'} ${pending===1?'has':'have'} not been classified.`);
+ for(const a of w.accounts){
+  const r=reconcile(w,a.id);
+  if(!a.balancesConfirmed)blockers.push(`Opening and closing balances for ${a.label} are not confirmed against the statement.`);
+  else if(!r.balanced)blockers.push(`${a.label} does not reconcile: ${r.difference>0?'missing':'extra'} ${Math.abs(r.difference).toFixed(2)} ${a.currency} is unexplained.`);
+ }
+ const unlinked=w.receipts.filter(r=>inYear(r.date,year)&&!r.evidence.trim()).length;
+ if(unlinked)notes.push(`${unlinked} receipt${unlinked===1?'':'s'} in TY${year} carry no bank or evidence reference.`);
+ const dup=w.lines.filter(l=>l.status==='duplicate').length;
+ if(dup)notes.push(`${dup} line${dup===1?'':'s'} ${dup===1?'was':'were'} marked as a duplicate import and excluded from reconciliation.`);
+ if(!w.accounts.length)notes.push('No account statements have been imported, so income records are self-reported only.');
+ return {blockers,notes,ready:blockers.length===0,pending};
+}

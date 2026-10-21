@@ -6,3 +6,142 @@
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 @media print{body{background:#fff!important;color:#000!important}#app,#toast,.print-top{display:none!important}#print-surface{position:static;padding:0;overflow:visible;background:white}.invoice-paper{padding:0;max-width:none}.invoice-paper pre{font-size:9px}a{color:black}.invoice-paper table{min-width:0}td,th{break-inside:avoid}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 .mobile-bottom{display:none}@media(max-width:760px){.mobile-bottom{display:flex;position:fixed;bottom:0;left:0;right:0;background:#18191b;border-top:1px solid #35363b;z-index:25;justify-content:space-around;padding:9px 8px calc(9px + env(safe-area-inset-bottom));}.mobile-bottom button{display:flex;flex-direction:column;align-items:center;gap:4px;color:#a3a5ae;font-size:9px;min-width:65px;min-height:40px}.mobile-bottom button.active{color:var(--orange)}.mobile-bottom svg{width:19px;height:19px}footer{padding-bottom:95px}#toast{bottom:85px}.metric strong{font-size:clamp(15px,4.8vw,20px)}}@media print{.mobile-bottom{display:none!important}}
+
+/* ── Statements, reconciliation, plan and Filing Pack ─────────────────────── */
+.muted{color:var(--muted)}
+.small{font-size:10px}
+p.small,p.muted.small{line-height:1.6}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:#d8d9de}
+.btn.ghost:hover{border-color:#43444a;background:#1f2023}
+.btn.tiny{padding:6px 9px;font-size:9.5px;min-height:30px;gap:5px;border-radius:8px;white-space:nowrap}
+.btn.tiny svg{width:13px;height:13px}
+
+.empty-panel{text-align:center;padding:52px 34px;display:grid;gap:14px;justify-items:center}
+.empty-mark{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:var(--orange-dark);color:var(--orange)}
+.empty-mark svg{width:25px;height:25px}
+.empty-panel h2{font-size:21px}
+.empty-panel p{max-width:560px;color:var(--muted);line-height:1.75}
+.empty-actions{display:flex;gap:10px;margin-top:4px}
+
+.statements-bar{flex-wrap:wrap;gap:12px}
+.seg{display:flex;flex-wrap:wrap;gap:4px;background:#151618;border:1px solid var(--line);border-radius:11px;padding:4px}
+.seg-btn{background:transparent;border:0;color:var(--muted);padding:8px 11px;border-radius:8px;font-size:10px;font-weight:500;min-height:32px}
+.seg-btn:hover{color:#e9eaee}
+.seg-btn.active{background:var(--orange-dark);color:var(--orange)}
+.bar-right{display:flex;gap:9px;align-items:center;margin-left:auto;flex-wrap:wrap}
+.quota{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:10px;margin:-6px 0 18px}
+.quota svg{width:13px;height:13px}
+.quota .text-link{font-size:10px}
+
+.recon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-bottom:20px}
+.recon-card{padding:18px}
+.recon-card.off{border-color:#5d3a2c}
+.recon-card.balanced{border-color:#2f4738}
+.recon-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px}
+.recon-head h3{font-size:14px}
+.recon-head p{color:var(--muted);font-size:9.5px;margin-top:3px}
+.recon-rows{display:grid;gap:7px;margin:0 0 13px}
+.recon-rows>div{display:flex;justify-content:space-between;gap:12px;font-size:11px}
+.recon-rows dt{color:var(--muted)}
+.recon-rows dd{margin:0;font-variant-numeric:tabular-nums;font-weight:500}
+.recon-rows dd.in{color:var(--green)}
+.recon-rows dd.out{color:#f0a58a}
+.recon-flag{display:flex;gap:8px;align-items:flex-start;font-size:10px;line-height:1.6;padding:10px 11px;border-radius:9px}
+.recon-flag svg{width:14px;height:14px;flex:0 0 auto;margin-top:1px}
+.recon-flag.ok{background:#1b2a22;color:#a8dcc0}
+.recon-flag.bad{background:#2e1c15;color:#ffb48d}
+.recon-flag.unconfirmed{background:#23242a;color:#c3c5ce}
+.recon-counts{color:var(--muted);font-size:9.5px;margin-top:11px}
+.transfer-panel{margin-bottom:20px}
+
+table.lines td{vertical-align:top}
+.line-desc{display:block;max-width:360px;overflow-wrap:anywhere}
+.line-actions{min-width:190px}
+.line-actions .btn{margin-right:5px;margin-bottom:3px}
+tr.duplicate,tr.excluded{opacity:.62}
+.amt{font-variant-numeric:tabular-nums;font-weight:500;white-space:nowrap}
+.amt.in{color:var(--green)}
+.amt.out{color:#f0a58a}
+.amt small{color:var(--muted);font-weight:400}
+.chip{display:inline-block;padding:4px 8px;border-radius:999px;font-size:9px;font-weight:500;white-space:nowrap;background:#23242a;color:#c6c8d0}
+.chip.pending{background:var(--orange-dark);color:var(--orange)}
+.chip.income{background:#1b2a22;color:#a8dcc0}
+.chip.expense{background:#2b2119;color:#e6bb98}
+.chip.transfer{background:#1e2430;color:#a9bfdd}
+.chip.duplicate{background:#2a2126;color:#d4a7bb}
+
+.import-preview{margin-top:20px;border-top:1px solid var(--line);padding-top:18px}
+.import-preview h3{font-size:12px;margin-bottom:11px}
+.map-list{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.issue-box{margin-top:15px;background:#231913;border:1px solid #4a2f21;border-radius:11px;padding:14px}
+.issue-box h4{margin:0 0 9px;font-size:11px;display:flex;gap:7px;align-items:center;color:#ffb48d}
+.issue-box h4 svg{width:14px;height:14px}
+.issue-box ul{margin:0;padding-left:17px;display:grid;gap:8px;font-size:10px;line-height:1.6}
+.issue-box small{color:var(--muted);overflow-wrap:anywhere}
+.drawer-actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:16px}
+.form-error.visible{color:#ffb48d;font-size:10.5px;margin-top:10px}
+
+.plan-panel{display:grid;gap:14px}
+.plan-state{display:flex;gap:8px;align-items:flex-start;font-size:11px;line-height:1.6;padding:11px 12px;border-radius:10px;background:#23242a;color:#c9cbd4}
+.plan-state svg{width:15px;height:15px;flex:0 0 auto;margin-top:1px}
+.plan-state.ok{background:#1b2a22;color:#a8dcc0}
+.plan-state.warn{background:#2b2119;color:#e6bb98}
+.plan-state.bad{background:#2e1c15;color:#ffb48d}
+.plan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:13px}
+.plan-card{border:1px solid var(--line);border-radius:13px;padding:17px;background:#151618}
+.plan-card.current{border-color:var(--orange);background:#1b1715}
+.plan-card h3{font-size:13px}
+.plan-card .price{font-size:19px;font-weight:600;margin:9px 0 2px}
+.plan-card ul{list-style:none;margin:13px 0 0;padding:0;display:grid;gap:8px}
+.plan-card li{display:flex;gap:8px;font-size:10px;line-height:1.55;color:#cdcfd7}
+.plan-card li svg{width:13px;height:13px;flex:0 0 auto;margin-top:2px;color:var(--orange)}
+.rails{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.rails li{display:flex;justify-content:space-between;gap:14px;font-size:11px;padding:9px 11px;background:#151618;border:1px solid var(--line);border-radius:9px}
+.rails span{font-variant-numeric:tabular-nums;color:var(--muted)}
+.pack-panel{margin-bottom:20px}
+.pack-warn{background:#231913;border:1px solid #4a2f21;border-radius:11px;padding:15px;margin-top:4px}
+.pack-warn h3{font-size:11.5px;display:flex;gap:8px;align-items:center;color:#ffb48d;margin-bottom:9px}
+.pack-warn h3 svg{width:15px;height:15px}
+.pack-warn ul{margin:0;padding-left:17px;display:grid;gap:7px;font-size:10.5px;line-height:1.6}
+
+@media(max-width:760px){
+ .map-list{grid-template-columns:1fr}
+ .recon-grid{grid-template-columns:1fr}
+ .bar-right{margin-left:0;width:100%}
+ .bar-right .btn{flex:1}
+ .seg{width:100%}
+ .line-actions .btn{margin-bottom:4px}
+ .plan-grid{grid-template-columns:1fr}
+}
+
+/* The printed Filing Pack lives on the light print surface. */
+.invoice-paper.pack{max-width:900px}
+.pack-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;border-bottom:2px solid #171717;padding-bottom:14px}
+.pack-head h1{font-size:26px}
+.pack-head p{margin-top:5px;color:#4a4a4a;font-size:12px}
+.pack-stamp{text-align:right;border:1.5px solid #b23c00;color:#b23c00;border-radius:8px;padding:8px 12px}
+.pack-stamp b{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.pack-stamp small{font-size:9px;color:#6a4028}
+.pack-meta{font-size:10px;color:#666;margin-top:9px}
+.pack-block{margin-top:22px;break-inside:avoid}
+.pack-block h2{font-size:14px;border-bottom:1px solid #d6d6d6;padding-bottom:6px;margin-bottom:11px}
+.pack-block h3{font-size:12px;margin:13px 0 7px}
+.pack-block ul{margin:0;padding-left:18px;display:grid;gap:6px;font-size:11px;line-height:1.6}
+.pack-block.ok{background:#eef7f1;border:1px solid #bcdcc8;border-radius:9px;padding:14px}
+.pack-block.warn{background:#fdf1e8;border:1px solid #e8c2a4;border-radius:9px;padding:14px}
+.pack-block.ok h2,.pack-block.warn h2{border:0;padding:0;margin-bottom:8px}
+.pack-block.inner{margin-top:14px}
+.pack-note{font-size:10px;color:#5c5c5c;margin-top:9px;line-height:1.6}
+.pack .pack-check{list-style:none;padding:0}
+.pack table{width:100%;border-collapse:collapse;font-size:10.5px;min-width:0}
+.pack th,.pack td{border:1px solid #d9d9d9;padding:6px 8px;text-align:left;vertical-align:top;color:#171717}
+.pack thead th{background:#f2f2f2;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em}
+.pack td.bad{color:#a52f00;font-weight:600}
+.pack small{color:#5f5f5f}
+.sign-grid{display:grid;grid-template-columns:1fr 1fr;gap:34px;margin-top:14px}
+.sign-grid p{font-size:11px;font-weight:600}
+.sign-line{border-bottom:1px solid #171717;height:42px;margin-bottom:5px}
+.sign-grid small{font-size:9px;color:#666}
+.prefill-note{display:flex;gap:9px;align-items:flex-start;background:#23242a;border:1px solid var(--line);border-radius:10px;padding:11px 12px;margin-bottom:15px;font-size:10.5px;line-height:1.65;color:#c9cbd4}
+.prefill-note svg{width:15px;height:15px;flex:0 0 auto;margin-top:1px;color:var(--orange)}
+.prefill-note b{color:#eceef2;font-weight:500}

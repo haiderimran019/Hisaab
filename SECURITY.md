@@ -14,6 +14,18 @@ Hisaab 1.0 is a local-first, single-person application. It has no financial-data
 - Lockfile, reproducible builds and CI with least privilege. No credentials or financial fixtures in the repository.
 - Tax years, legal references and explicit unsupported-case gates reduce the risk of misrepresenting a scenario as a complete liability.
 
+## Statement import, licence keys and the Filing Pack
+
+- Statement CSVs are parsed entirely in the browser. No file, row or amount is uploaded anywhere, and no OCR or AI service is contacted. A PDF or spreadsheet is refused with an explanation rather than parsed as text.
+- Import files are capped at 4 MB and 8,000 rows; a workspace holds at most 8,000 statement lines, 40 accounts and 400 import batches, inside the existing 3 MB plaintext workspace cap.
+- Imported text is validated by strict Zod schemas and escaped before templating on every surface, including the printed Filing Pack. A pack-level test asserts that statement text cannot inject markup or script.
+- A row that cannot be read is listed with its row number and original text; it is never dropped silently, netted, or given a guessed date, sign or amount. A row carrying both a debit and a credit is reported rather than reconciled away.
+- Duplicate detection is a reversible flag, not a deletion. Duplicate lines are excluded from reconciliation arithmetic and shown as such.
+- Reconciliation reports the unexplained difference. The application has no code path that closes a difference by creating a balancing entry.
+- Licence keys are ECDSA P-256 signatures over a plain payload, verified with WebCrypto against a public key compiled into the bundle. The key is stored inside the encrypted workspace and is never transmitted. Verification is offline and anonymous.
+- **Licence enforcement is client-side and is not a security control.** The gate can be removed by anyone willing to edit the published bundle, and the app states this in Settings. The signing private key is held outside the repository; see `docs/LICENSING.md` for its handling and leak recovery.
+- An absent, invalid or expired key never blocks reading, editing, exporting or backing up a customer's own records.
+
 ## Limits and operational requirements
 
 A compromised browser, same-origin injected script, malicious extension or unlocked computer can read decrypted data. Browser clearing removes the vault, and storage is not synchronized across devices. Losing the passphrase loses access. Backups must be kept by the user; financial CSV and worksheet exports are plaintext. A private hosted Site protects page access but is not a substitute for vault encryption. This code has not undergone an independent penetration test or professional tax review.

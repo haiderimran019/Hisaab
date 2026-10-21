@@ -18,13 +18,35 @@ npm run dev
 Open the URL printed by Vite. Explore the labelled demo, or create an empty private workspace with a passphrase of at least 12 characters. No API keys or environment variables are required. Run over HTTPS in production (localhost is supported by WebCrypto).
 
 ```bash
-npm test        # monetary, tax, schema, injection and encryption tests
+npm test        # monetary, tax, schema, import, licensing, injection and encryption tests
 npm run build   # TypeScript check and production assets in dist/
 npm run preview
 ```
 
+## The paid workflow
+
+```
+Import a CSV statement
+  → confirm which column is what
+  → repeats and own-account transfers flagged
+  → you decide what every remaining line is
+  → balances reconcile, or the unexplained amount stays on screen
+  → Filing Pack: one source-linked document for your accountant or for IRIS
+```
+
+Three rules this product will not break:
+
+1. **Nothing becomes income until a person says so.** Imported lines wait to be classified.
+2. **An unexplained difference is never hidden.** It is reported on the account card and printed on the front page of the Filing Pack. No code path closes a gap with a balancing entry.
+3. **Every number is traceable** to a statement row, an attached document, or something you explicitly declared.
+
+Sold as an annual licence key — Easypaisa, JazzCash, Raast and bank transfer are how people here actually pay, so nothing is held on a card and no customer-data backend exists. Keys are verified offline against a signature. **Free** keeps records and shows the estimate; **Pro, PKR 2,400 a year** adds unlimited imports, up to 10 accounts, reconciliation and the Filing Pack; **Accountant, PKR 14,400 a year** adds 40 accounts and a workspace per client. Licence enforcement is client-side and the app says so. An expired key never blocks your own records, exports or backups — only the paid steps stop. See [docs/COMMERCIAL.md](docs/COMMERCIAL.md) for the reasoning and [docs/LICENSING.md](docs/LICENSING.md) for how keys are issued.
+
 ## What works
 
+- **Statement import:** CSV parsing in the browser with column mapping you confirm, detection of the header row under a bank's title block, debit/credit or signed-amount or Dr/Cr layouts, Pakistani money and date formats, duplicate detection within and across imports, own-transfer suggestions, and per-row provenance (file, fingerprint, row number). Rows it cannot read are listed with their row numbers, never dropped quietly. **PDF statements are not read.** The CSV formats of real Pakistani bank, Payoneer and Wise exports have not yet been tested against the live product — see [docs/VERIFICATION.md](docs/VERIFICATION.md).
+- **Reconciliation:** per-account opening balance, movement, computed closing and the statement's closing, with the unexplained difference always shown and duplicates excluded from the arithmetic.
+- **Filing Pack:** a printable, source-linked package — unresolved items first, accounts and reconciliation, income by classification, payment-by-payment detail citing statement rows, expenses, the tax scenario with its rule version, a document checklist, your declarations, and an explicit "not reviewed" stamp with a practitioner sign-off block.
 - **Income:** create/edit/delete/search/filter receipts in USD, GBP, EUR, AED or PKR; record actual FX, original-currency processor fees, PKR bank fees, tax withheld, realization evidence and a separate tax base.
 - **Invoices:** create/edit/status tracking, due dates, quantity × unit price, client details and printable/PDF-ready invoices. Invoice status never silently creates income. Sharing is manual; no email or payment is sent.
 - **Expenses:** actual FX, business-use allocation, evidence reference, optional PNG/JPEG/PDF receipt encrypted with your book, and explicit domestic-deduction claim.
@@ -50,11 +72,18 @@ See [SECURITY.md](SECURITY.md) for implemented controls, threat model, limitatio
 
 | Module | Responsibility |
 | --- | --- |
-| `src/core.ts` | Strict schemas, decimal arithmetic, tax-year selection, deterministic Pakistan calculations, CSV/HTML escaping |
-| `src/vault.ts` | Encryption, key derivation, size-bounded authenticated restore |
+| `src/core.ts` | Strict schemas, decimal arithmetic, tax-year selection, deterministic Pakistan calculations, accounts and statement lines, reconciliation, readiness, schema migration, CSV/HTML escaping |
+| `src/statements.ts` | CSV parsing, header detection, column mapping, money and date readers, duplicate fingerprints, own-transfer pairing |
+| `src/pack.ts` | The Filing Pack: data and printable HTML |
+| `src/license.ts` | Offline ECDSA licence verification, trial, plan limits |
+| `src/pricing.ts` | Prices, plan copy, payment rails — the only place to change commercial terms |
+| `src/vault.ts` | Encryption, key derivation, size-bounded authenticated restore (migrates older workspaces on unlock) |
 | `src/main.ts` | Local application state, forms, reports, print, optional public FX request |
-| `src/demo.ts` | Clearly labelled synthetic sample data |
+| `src/ui-statements.ts` | Views for statements, reconciliation, the plan panel and the pack gate |
+| `src/format.ts` | Shared number, date and icon formatting |
+| `src/demo.ts` | Clearly labelled synthetic sample data, including a worked statement |
 | `src/style.css` | Responsive design and print styles |
+| `tools/make-license.mjs` | Publisher-side key generation, issuing and verification |
 
 Inputs and units are documented in the [feature/algorithm plan](docs/PLAN.md). Money uses decimal arithmetic with half-up rounding to two PKR decimals; per-unit FX supports six decimals. The selected tax year controls July–June receipt and expense reporting. Tax-profile confirmations are year-specific. Foreign amounts, tax bases and withholding remain distinct.
 
@@ -66,6 +95,10 @@ The public app has no shared financial-data backend and does not expose another 
 
 ## Release status
 
-This is a functional **local-first MVP**, not an 8–10 week commercially certified service compressed into one session. Account sync, bank OAuth/import APIs, subscription billing and professional tax/security approval are not implemented. The [plan](docs/PLAN.md) contains the commercial roadmap. See [verification evidence](docs/VERIFICATION.md) for checks actually run and remaining validation limits.
+This is a functional **local-first product with a working paid mechanism**, not a commercially certified tax service. Statement import, reconciliation, the Filing Pack and offline licence keys are implemented and tested. Account sync, bank OAuth or statement APIs, PDF and OCR extraction, shared accountant workspaces, card subscriptions, and professional tax or security approval are **not** implemented.
+
+Before money changes hands, four things that are not code must exist: a qualified Pakistani practitioner's written review of the tax rules and the Filing Pack's wording; published terms, privacy notice and refund policy; real payment details in `src/pricing.ts` (deliberately left empty) with a sales ledger; and a process for correcting and reissuing if a rule turns out to be wrong. [docs/COMMERCIAL.md](docs/COMMERCIAL.md) sets out the evidence plan and the thresholds at which this concept should be narrowed or dropped. The [plan](docs/PLAN.md) contains the commercial roadmap. See [verification evidence](docs/VERIFICATION.md) for checks actually run and remaining validation limits.
+
+**Workspace format.** Encrypted workspaces are version 2. A version 1 workspace from an earlier release is migrated on unlock or restore, keeping every receipt, expense, invoice and profile declaration; a test asserts no record is lost. An unknown or newer version is refused rather than guessed at.
 
 Third-party licenses remain with their authors. Lucide uses ISC; Poppins uses SIL OFL; Decimal.js and Zod use MIT. Live quotes are attributed to [ExchangeRate-API](https://www.exchangerate-api.com/). The supplied screenshot inspired the palette and composition; none of its shipping imagery was copied.
