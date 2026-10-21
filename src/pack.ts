@@ -9,12 +9,15 @@
       never made to look finished by hiding a difference. */
 import Decimal from 'decimal.js';
 import {estimate,reconcile,readiness,receiptMath,expenseMath,inYear,sum,money,escapeHTML as h,RULE_VERSION,SOURCES,type Workspace} from './core';
+import type {ReviewStatus} from './review';
+
+export type PackExtras={digest?:string;review?:ReviewStatus};
 
 const fmt=(n:number)=>new Intl.NumberFormat('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
 const dateLabel=(d:string)=>new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(d));
 const catLabel:Record<string,string>={'it-export':'IT / IT-enabled export','service-export':'Other service export',domestic:'Domestic freelance business','social-media':'Social media',other:'Unclassified'};
 
-export function filingPack(w:Workspace,year:number,planLabel:string){
+export function filingPack(w:Workspace,year:number,planLabel:string,extras:PackExtras={}){
  const e=estimate(w,year);
  const state=readiness(w,year);
  const receipts=w.receipts.filter(r=>inYear(r.date,year));
@@ -42,6 +45,7 @@ export function filingPack(w:Workspace,year:number,planLabel:string){
   {item:'Export receipts marked as realized through an authorized dealer',done:receipts.filter(r=>['it-export','service-export'].includes(r.category)).every(r=>r.banking)},
   {item:'Gross realized tax base in PKR entered and confirmed for each export receipt',done:receipts.filter(r=>['it-export','service-export'].includes(r.category)).every(r=>r.baseConfirmed)},
   {item:'Withholding certificates collected for every deduction recorded',done:false,manual:true},
+  {item:'Pack reviewed and signed by a practitioner',done:extras.review?.state==='verified'},
   {item:'Expense receipts attached or referenced for claimed deductions',done:expenses.filter(x=>x.deductible).every(x=>!!x.receipt||!!x.evidence.trim())},
   {item:'Wealth statement figures prepared (opening and closing assets)',done:false,manual:true},
   {item:'Tax profile reconfirmed for this tax year',done:w.profile.confirmedYear===year}
@@ -52,7 +56,12 @@ export function filingPack(w:Workspace,year:number,planLabel:string){
   generatedAt:new Date().toISOString(),taxYear:year,period:`1 July ${year-1} to 30 June ${year}`,
   plan:planLabel,
   preparedFor:w.profile.name||'(name not entered)',
-  reviewed:false,
+  digest:extras.digest??'',
+  reviewed:extras.review?.state==='verified',
+  review:extras.review?.state==='verified'?{
+   name:extras.review.payload.name,registration:extras.review.payload.registration,
+   reviewedOn:extras.review.payload.reviewedOn,note:extras.review.payload.note
+  }:null,
   readiness:state,accounts,byCategory,
   estimate:e,
   profile:w.profile,
@@ -77,9 +86,17 @@ export function filingPack(w:Workspace,year:number,planLabel:string){
  const html=`<div class="invoice-paper pack">
   <div class="pack-head">
    <div><h1>Filing Pack</h1><p>${h(data.preparedFor)} · Tax year ${year} · ${h(data.period)}</p></div>
-   <div class="pack-stamp"><b>Not reviewed</b><small>Software output · ${h(RULE_VERSION)}</small></div>
+   ${extras.review?.state==='verified'
+    ?`<div class="pack-stamp verified"><b>&#10003; Reviewed</b><small>${h(extras.review.payload.name)}<br>${h(extras.review.payload.registration)} · ${h(extras.review.payload.reviewedOn)}</small></div>`
+    :extras.review?.state==='stale'
+    ?`<div class="pack-stamp stale"><b>Review out of date</b><small>Signed for earlier figures<br>${h(extras.review.payload.reviewedOn)}</small></div>`
+    :`<div class="pack-stamp"><b>Not reviewed</b><small>Software output · ${h(RULE_VERSION)}</small></div>`}
   </div>
-  <p class="pack-meta">Generated ${h(new Date(data.generatedAt).toUTCString())} · Plan: ${h(planLabel)} · Pack format 1</p>
+  <p class="pack-meta">Generated ${h(new Date(data.generatedAt).toUTCString())} · Plan: ${h(planLabel)} · Pack format 1${extras.digest?` · Fingerprint ${h(extras.digest.slice(0,16))}…`:''}</p>
+  ${extras.review?.state==='verified'?`<section class="pack-block ok"><h2>&#10003; Reviewed by a practitioner</h2>
+   <p><b>${h(extras.review.payload.name)}</b>, ${h(extras.review.payload.registration)}, reviewed the figures in this pack on ${h(extras.review.payload.reviewedOn)}.${extras.review.payload.note?` Their note: &ldquo;${h(extras.review.payload.note)}&rdquo;`:''}</p>
+   <p class="pack-note">The certificate is signed and tied to this pack's fingerprint, so it cannot be moved to a pack with different figures. It confirms that the holder of that reviewing key signed off these numbers. It is not an FBR approval, not a guarantee, and Hisaab does not verify the reviewer's registration itself.</p></section>`
+   :extras.review?.state==='stale'?`<section class="pack-block warn"><h2>This review no longer matches these figures</h2><p>${h(extras.review.reason)}</p></section>`:''}
 
   <section class="pack-block ${statusClass}">
    <h2>${state.ready?'Nothing is unexplained in these records':'Resolve these before anyone relies on this pack'}</h2>
@@ -144,7 +161,7 @@ export function filingPack(w:Workspace,year:number,planLabel:string){
     <div><p>Prepared by (customer)</p><div class="sign-line"></div><small>Name, date</small></div>
     <div><p>Reviewed by (practitioner)</p><div class="sign-line"></div><small>Name, NTN / registration, date</small></div>
    </div>
-   <p class="pack-note">Until a practitioner signs above, this pack is unreviewed software output.</p></section>
+   <p class="pack-note">${extras.review?.state==='verified'?'A signed review certificate is recorded above. The handwritten blocks are for your own records.':'Until a practitioner signs above, this pack is unreviewed software output.'}</p></section>
  </div>`;
  return {data,html};
 }

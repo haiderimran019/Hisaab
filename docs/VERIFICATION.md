@@ -2,7 +2,7 @@
 
 ## Completed
 
-- `npm test`: 63 passing tests (27 original, 36 added with the paid workflow) covering precise settlement, decimal rounding, fees exceeding proceeds, PKR rate validation, invalid dates and July–June boundaries, every business-slab boundary, surcharge threshold, unsupported years, 154A rates/conditions including the PSEB sales-return exception, separate tax bases, withholding segregation, unsupported profiles, expense allocation, strict schemas, CSV formula injection, HTML escaping, zero confirmed export bases, unsafe aggregate precision, AJK/GB review gate and authenticated encrypted-backup round trips/tampering/wrong passphrases.
+- `npm test`: 86 passing tests (27 original, 36 with the paid workflow, 23 with two-factor and the review tick) covering precise settlement, decimal rounding, fees exceeding proceeds, PKR rate validation, invalid dates and July–June boundaries, every business-slab boundary, surcharge threshold, unsupported years, 154A rates/conditions including the PSEB sales-return exception, separate tax bases, withholding segregation, unsupported profiles, expense allocation, strict schemas, CSV formula injection, HTML escaping, zero confirmed export bases, unsafe aggregate precision, AJK/GB review gate and authenticated encrypted-backup round trips/tampering/wrong passphrases.
 - `npm run build`: TypeScript check and Vite production build pass.
 - Dependency installation audit: zero vulnerabilities in the installed dependency tree at installation. This is a point-in-time package audit, not a penetration test.
 - Browser: income creation, editing and search with a six-decimal FX rate; script-shaped text safely rendered; expense business-use allocation; invoice creation, quantity × price and print preview; encrypted-vault setup with isolated synthetic QA data; no demo copied into vault; persistence across reload; locked reload; wrong-passphrase rejection; successful unlock; encrypted backup download; restore consent rejection and successful authenticated restore.
@@ -23,6 +23,23 @@
 - Free-plan gating was reviewed in code and its limit values are unit-tested, but the blocked paths were not exercised in the browser, because the test workspace was on a trial and then a Pro key.
 - The Filing Pack has not been shown to a tax practitioner. No part of it has been professionally reviewed.
 - No payment was taken, no refund processed, and the payment details in `src/pricing.ts` are deliberately empty.
+
+## Added 21 October 2026 — interface rebuild, two-factor, privacy controls, review tick
+
+- `npm test`: 23 further tests. Two-factor: base32 round-trips at every padding length, rejection of invalid secrets, **the three RFC 6238 published test vectors** (287082 / 081804 / 005924), drift of one step either side accepted and two steps refused, malformed codes refused without throwing, spaces tolerated, the otpauth link's contents, countdown bounds, recovery codes unique and stored only as hashes, and recovery matching regardless of case or separators. Review tick: verification against the exact pack, a changed figure turning it stale, a changed statement line turning it stale, a wrong tax year, an unpublished reviewer, a foreign signing key, unreadable input, fingerprint scope including record-order independence, and the pack's reviewed and unreviewed wording. Migration: v2 → v3 keeping statements and not inventing security settings.
+- `npx tsc --noEmit` and `npm run build` pass. The built bundle contains no `new Worker` call; a CSP worker warning seen in the Vite dev server comes from the development environment, not from this application.
+- Browser, two-factor end to end: created a workspace, set up two-factor, and confirmed it with a code computed by an **independent TOTP implementation written separately in the page** — which is what proves a real authenticator app will work. Locked; the passphrase alone then produced a "One more step" screen with no workspace data rendered behind it; a wrong code was refused with a readable reason; a recovery code opened the workspace; the same recovery code was refused on the next unlock; an authenticator code still worked afterwards.
+- Browser, privacy controls: hide-amounts, never-touch-the-network and a 15-minute auto-lock were set, the workspace locked and reopened, and all three came back — confirming they persist inside the encrypted workspace rather than in plain browser storage.
+- Browser, interface: the six-step home renders with the correct current step and progress ring, on desktop and at 375 × 812 with no horizontal overflow; the mobile bottom bar shows the pending-line badge; the Privacy page renders all ten sections.
+- The throwaway test workspace was removed from browser storage afterwards.
+
+### Not verified for this change
+
+- No real authenticator app was used — interoperability is argued from the RFC test vectors and an independent implementation, which is strong evidence but is not the same as scanning the key into Google Authenticator on a phone. Do that once before launch.
+- The review tick has never been exercised with a real practitioner's key, because none exists. It was tested with keys generated inside the test run.
+- Clock-skew behaviour was tested by moving the timestamp, not by changing a device clock.
+- Screen-reader and keyboard-only passes over the new interface have not been done; no accessibility audit has been performed.
+- The new interface has not been tested on a real phone browser, only at phone dimensions in a desktop engine.
 
 ## Limits
 

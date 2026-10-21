@@ -26,6 +26,24 @@ Hisaab 1.0 is a local-first, single-person application. It has no financial-data
 - **Licence enforcement is client-side and is not a security control.** The gate can be removed by anyone willing to edit the published bundle, and the app states this in Settings. The signing private key is held outside the repository; see `docs/LICENSING.md` for its handling and leak recovery.
 - An absent, invalid or expired key never blocks reading, editing, exporting or backing up a customer's own records.
 
+## Two-factor codes, recovery and privacy switches
+
+- Two-factor uses RFC 6238 TOTP (SHA-1, 6 digits, 30-second step, one step of drift either side), computed in the browser with WebCrypto and verified against the RFC's published test vectors. Any standard authenticator app works. No phone number, email address or network request is involved at any point.
+- **The second factor is a lock-screen control, not added encryption strength, and the app says so where it is set up.** The shared secret lives inside the encrypted workspace, so it can only be checked after the passphrase has already decrypted it. It stops someone who has watched or guessed the passphrase from opening the workspace in this browser; it does not stop someone holding both a backup file and the passphrase. The passphrase remains the only thing protecting the data at rest.
+- While a second factor is outstanding the decrypted workspace is held out of the UI entirely: nothing is rendered and no record is reachable until a code or recovery code is accepted. Locking, or pressing "start again", discards it.
+- Recovery codes are 8 random base32 codes shown exactly once. Only salted SHA-256 hashes are stored. A used code is removed and the workspace re-sealed **before** it opens, so an interrupted unlock cannot leave a code reusable. Comparison is case- and separator-insensitive so a code can be typed as it was written down.
+- Turning two-factor off clears the secret and every recovery hash.
+- **Never touch the network** blocks the reference exchange-rate request, which is the only outbound request the application can make, and clears any cached quote. With it on, nothing leaves the browser.
+- **Hide amounts** blurs figures on Home. It is a shoulder-surfing convenience, not a security control: the values are present in the DOM.
+- Auto-lock is configurable at 1, 5, 15 or 30 minutes and is stored inside the encrypted workspace. Page-hide and other-tab locking are unchanged.
+
+## The practitioner review tick
+
+- A certificate is an ECDSA P-256 signature over a payload naming the reviewer, their registration, the tax year, the review date and a SHA-256 fingerprint of the pack's figures.
+- Verification requires the reviewer's public key to be compiled into the release. `REVIEWERS` is empty in this build, so no tick can be displayed by anyone, including the publisher. A tick the publisher can mint for itself carries no information.
+- The fingerprint covers every receipt, expense, account, statement line and profile declaration in scope for the year, sorted by id so array order cannot change it, plus the name on the pack. Any change to a figure or declaration moves the pack to "review out of date" automatically.
+- A tick means the holder of that reviewing key signed off those figures. It is not an FBR approval, and Hisaab does not itself verify that the reviewer's registration is genuine — that check belongs to whoever onboards the reviewer. Reviewing private keys belong to the reviewer and are generated outside the repository; see `docs/LICENSING.md` and `tools/make-review.mjs`.
+
 ## Limits and operational requirements
 
 A compromised browser, same-origin injected script, malicious extension or unlocked computer can read decrypted data. Browser clearing removes the vault, and storage is not synchronized across devices. Losing the passphrase loses access. Backups must be kept by the user; financial CSV and worksheet exports are plaintext. A private hosted Site protects page access but is not a substitute for vault encryption. This code has not undergone an independent penetration test or professional tax review.

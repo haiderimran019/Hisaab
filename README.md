@@ -23,6 +23,19 @@ npm run build   # TypeScript check and production assets in dist/
 npm run preview
 ```
 
+## How it feels to use
+
+Home is a guide, not a dashboard. It tells you which of six steps you are on, in
+one sentence, with one button: tell us about your work → add your accounts →
+import statements → say what each payment was → make it balance → get your Filing
+Pack. The three money figures are in words people say out loud — *what reached
+you*, *lost to fees*, *keep aside for tax* — and you can blur them with one switch
+when you are working in public.
+
+It is built for a phone first. Wide tables become stacked cards, the bottom bar
+carries the five screens people actually open with a badge for what is waiting,
+and every control is thumb-sized.
+
 ## The paid workflow
 
 ```
@@ -53,7 +66,8 @@ Sold as an annual licence key — Easypaisa, JazzCash, Raast and bank transfer a
 - **FX:** transparent settlement calculator plus opt-in, dated ExchangeRate-API reference quotes. Provider fees are entered, never invented. Reference FX is not historical FX or an executable bank offer.
 - **Pakistan tax center:** TY2026/TY2027, 154A export scenarios (PSEB IT/ITeS and other services), domestic individual-business slabs and surcharge, separate withholding credits, statutory eligibility gates, provincial/special-regime review flags and official FBR source links.
 - **Reports:** income/expense CSVs, source-linked tax worksheet JSON, printable worksheet, monthly reconciliation and filing checklist. Exports are for accountant review, not an IRIS import or submission.
-- **Privacy:** AES-256-GCM encrypted local storage, PBKDF2, non-extractable in-memory key, inactivity/page-hide lock, encrypted backup/restore and explicit local deletion.
+- **Privacy and security:** AES-256-GCM encrypted local storage, PBKDF2 at 600,000 iterations, non-extractable in-memory key, encrypted backup/restore and explicit local deletion. **Two-factor codes on unlock** from any authenticator app (offline — no phone number, no email address), **8 single-use recovery codes** stored only as hashes, **Never touch the network** to switch off the one outside request the app can make, **hide amounts** for working in public, and auto-lock at 1/5/15/30 minutes plus lock on tab hide. A [privacy notice](docs/PRIVACY.md) written to be read, inside the app and in the repository from the same source.
+- **Practitioner review tick:** a reviewer signs a certificate bound to your pack's fingerprint; the pack prints a verified tick with their name, registration and date. Change one figure and the tick turns amber by itself. No reviewer is published with this release, so no tick can be shown yet — not even by us.
 - **Responsive UI:** desktop side navigation, mobile bottom navigation, keyboard focus, reduced-motion support and labelled controls. Fonts are self-hosted.
 
 ## Pakistan rules, honestly scoped
@@ -74,7 +88,11 @@ See [SECURITY.md](SECURITY.md) for implemented controls, threat model, limitatio
 | --- | --- |
 | `src/core.ts` | Strict schemas, decimal arithmetic, tax-year selection, deterministic Pakistan calculations, accounts and statement lines, reconciliation, readiness, schema migration, CSV/HTML escaping |
 | `src/statements.ts` | CSV parsing, header detection, column mapping, money and date readers, duplicate fingerprints, own-transfer pairing |
-| `src/pack.ts` | The Filing Pack: data and printable HTML |
+| `src/pack.ts` | The Filing Pack: data, printable HTML and the review tick |
+| `src/totp.ts` | Authenticator codes (RFC 6238) and single-use recovery codes |
+| `src/review.ts` | Practitioner certificates and the pack fingerprint they sign |
+| `src/ui-home.ts` | The six-step guide and the plain-language money cards |
+| `src/ui-privacy.ts` | Privacy controls, two-factor setup, the review panel and the privacy notice |
 | `src/license.ts` | Offline ECDSA licence verification, trial, plan limits |
 | `src/pricing.ts` | Prices, plan copy, payment rails — the only place to change commercial terms |
 | `src/vault.ts` | Encryption, key derivation, size-bounded authenticated restore (migrates older workspaces on unlock) |
@@ -84,6 +102,7 @@ See [SECURITY.md](SECURITY.md) for implemented controls, threat model, limitatio
 | `src/demo.ts` | Clearly labelled synthetic sample data, including a worked statement |
 | `src/style.css` | Responsive design and print styles |
 | `tools/make-license.mjs` | Publisher-side key generation, issuing and verification |
+| `tools/make-review.mjs` | Reviewer onboarding and signing a customer's Filing Pack |
 
 Inputs and units are documented in the [feature/algorithm plan](docs/PLAN.md). Money uses decimal arithmetic with half-up rounding to two PKR decimals; per-unit FX supports six decimals. The selected tax year controls July–June receipt and expense reporting. Tax-profile confirmations are year-specific. Foreign amounts, tax bases and withholding remain distinct.
 
@@ -99,6 +118,8 @@ This is a functional **local-first product with a working paid mechanism**, not 
 
 Before money changes hands, four things that are not code must exist: a qualified Pakistani practitioner's written review of the tax rules and the Filing Pack's wording; published terms, privacy notice and refund policy; real payment details in `src/pricing.ts` (deliberately left empty) with a sales ledger; and a process for correcting and reissuing if a rule turns out to be wrong. [docs/COMMERCIAL.md](docs/COMMERCIAL.md) sets out the evidence plan and the thresholds at which this concept should be narrowed or dropped. The [plan](docs/PLAN.md) contains the commercial roadmap. See [verification evidence](docs/VERIFICATION.md) for checks actually run and remaining validation limits.
 
-**Workspace format.** Encrypted workspaces are version 2. A version 1 workspace from an earlier release is migrated on unlock or restore, keeping every receipt, expense, invoice and profile declaration; a test asserts no record is lost. An unknown or newer version is refused rather than guessed at.
+**Workspace format.** Encrypted workspaces are version 3. Version 1 and version 2 workspaces from earlier releases are migrated on unlock or restore, keeping every receipt, expense, invoice, account, statement line and declaration; tests assert no record is lost and that a migrated workspace is never silently given security settings it never had. An unknown or newer version is refused rather than guessed at.
+
+**What a subscription gets you**, feature by feature, with an equally plain list of what is *not* built and what "whole tax help" would really take: [docs/FEATURES.md](docs/FEATURES.md).
 
 Third-party licenses remain with their authors. Lucide uses ISC; Poppins uses SIL OFL; Decimal.js and Zod use MIT. Live quotes are attributed to [ExchangeRate-API](https://www.exchangerate-api.com/). The supplied screenshot inspired the palette and composition; none of its shipping imagery was copied.

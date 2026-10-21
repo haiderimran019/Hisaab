@@ -73,12 +73,12 @@ export function statementsView(ctx:Ctx){
  ${transfers.length?`<section class="panel transfer-panel">
   <div class="panel-head"><div><h2>${transfers.length} likely transfer${transfers.length===1?'':'s'} between your own accounts</h2>
    <p>Equal and opposite movements a few days apart. Confirming a pair keeps both sides out of income and out of spending.</p></div></div>
-  <div class="table-scroll"><table><thead><tr><th>Out</th><th>In</th><th>Gap</th><th>Amount</th><th>Confirm</th></tr></thead><tbody>
+  <div class="table-scroll"><table class="cards"><thead><tr><th>Out</th><th>In</th><th>Gap</th><th>Amount</th><th>Confirm</th></tr></thead><tbody>
   ${transfers.slice(0,20).map(p=>`<tr>
-   <td>${h(dateLabel(p.out.date))}<br><small>${h(accountName(w,p.out.accountId))} · ${h(p.out.description.slice(0,60))}</small></td>
-   <td>${h(dateLabel(p.in.date))}<br><small>${h(accountName(w,p.in.accountId))} · ${h(p.in.description.slice(0,60))}</small></td>
-   <td>${p.days} day${p.days===1?'':'s'}</td>
-   <td>${num(Math.abs(Number(p.out.amount)))}</td>
+   <td data-label="Money out">${h(dateLabel(p.out.date))}<br><small>${h(accountName(w,p.out.accountId))} · ${h(p.out.description.slice(0,60))}</small></td>
+   <td data-label="Money in">${h(dateLabel(p.in.date))}<br><small>${h(accountName(w,p.in.accountId))} · ${h(p.in.description.slice(0,60))}</small></td>
+   <td data-label="Gap">${p.days} day${p.days===1?'':'s'}</td>
+   <td data-label="Amount">${num(Math.abs(Number(p.out.amount)))}</td>
    <td class="line-actions"><button class="btn tiny primary" data-pair="${p.out.id}:${p.in.id}">${icon('check')}Both are mine</button></td>
   </tr>`).join('')}</tbody></table></div>
  </section>`:''}
@@ -102,11 +102,11 @@ function lineRow(w:Workspace,l:StatementLine){
  const inflow=new Decimal(l.amount).gt(0);
  const decided=l.status!=='pending';
  return `<tr class="${l.status}">
-  <td>${h(dateLabel(l.date))}<br><small>row ${l.row}</small></td>
-  <td><span class="line-desc">${h(l.description.slice(0,90))}</span>${l.counterparty?`<br><small>${h(l.counterparty.slice(0,60))}</small>`:''}${l.note?`<br><small class="muted">${h(l.note)}</small>`:''}</td>
-  <td><small>${h(accountName(w,l.accountId))}</small></td>
-  <td>${amountCell(l.amount,currency)}</td>
-  <td>${statusChip(l.status)}</td>
+  <td data-label="Date">${h(dateLabel(l.date))}<br><small>row ${l.row}</small></td>
+  <td data-label="Description"><span class="line-desc">${h(l.description.slice(0,90))}</span>${l.counterparty?`<br><small>${h(l.counterparty.slice(0,60))}</small>`:''}${l.note?`<br><small class="muted">${h(l.note)}</small>`:''}</td>
+  <td data-label="Account"><small>${h(accountName(w,l.accountId))}</small></td>
+  <td data-label="Amount">${amountCell(l.amount,currency)}</td>
+  <td data-label="State">${statusChip(l.status)}</td>
   <td class="line-actions">${decided
    ?`<button class="btn tiny ghost" data-line-reset="${l.id}">${icon('refresh-cw')}Undo</button>`
    :`${inflow?`<button class="btn tiny primary" data-line-income="${l.id}">${icon('arrow-down-left')}Income</button>`

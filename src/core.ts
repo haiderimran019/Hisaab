@@ -37,7 +37,7 @@ export type Receipt=z.infer<typeof receiptSchema>;
 export type Expense=z.infer<typeof expenseSchema>;
 export type Invoice=z.infer<typeof invoiceSchema>;
 export type Workspace=z.infer<typeof workspaceSchema>;
-export const blankWorkspace=():Workspace=>({version:2,accounts:[],batches:[],lines:[],license:{key:'',activatedAt:'',trialStarted:''},profile:{confirmedYear:2027,name:'',province:'Punjab',resident:true,pseb:false,returnFiled:false,statementsFiled:false,salesReturns:false,noForeignCredit:false,noOptOut:false,simpleBusiness:false,otherIncome:false,deductionsReviewed:false,provinceReviewed:false},receipts:[],expenses:[],invoices:[]});
+export const blankWorkspace=():Workspace=>({version:3,accounts:[],batches:[],lines:[],license:{key:'',activatedAt:'',trialStarted:''},security:blankSecurity(),review:{certificate:''},profile:{confirmedYear:2027,name:'',province:'Punjab',resident:true,pseb:false,returnFiled:false,statementsFiled:false,salesReturns:false,noForeignCredit:false,noOptOut:false,simpleBusiness:false,otherIncome:false,deductionsReviewed:false,provinceReviewed:false},receipts:[],expenses:[],invoices:[]});
 export const money=(v:Decimal.Value)=>{const d=new Decimal(v).toDecimalPlaces(2);if(!d.isFinite()||d.mul(100).abs().gt(Number.MAX_SAFE_INTEGER))throw Error('Amount exceeds safe PKR precision. Split or review this workspace.');return d.toNumber();};
 export const sum=(values:Decimal.Value[])=>money(values.reduce<Decimal>((a,b)=>a.plus(b),new Decimal(0)));
 export function receiptMath(r:Receipt){const gross=new Decimal(r.gross).mul(r.rate),fees=new Decimal(r.fee).mul(r.rate).plus(r.bankFee);return {gross:money(gross),fees:money(fees),withheld:money(r.withheld),net:money(gross.minus(fees).minus(r.withheld))};}
@@ -104,8 +104,28 @@ export type Account=z.infer<typeof accountSchema>;
 export type ImportBatch=z.infer<typeof batchSchema>;
 export type StatementLine=z.infer<typeof lineSchema>;
 
-export const workspaceSchema=z.object({
+export const securitySchema=z.object({
+ twoFactor:z.boolean(),
+ totpSecret:z.string().max(64),
+ recovery:z.array(z.string().length(64)).max(10),
+ recoveryUsed:z.number().int().min(0).max(10),
+ autoLockMinutes:z.union([z.literal(1),z.literal(5),z.literal(15),z.literal(30)]),
+ offlineOnly:z.boolean(),
+ blurAmounts:z.boolean(),
+ noticeAcceptedAt:z.string().max(40)
+}).strict();
+export const reviewSchema=z.object({certificate:z.string().max(4000)}).strict();
+export const blankSecurity=():z.infer<typeof securitySchema>=>({twoFactor:false,totpSecret:'',recovery:[],recoveryUsed:0,autoLockMinutes:5,offlineOnly:false,blurAmounts:false,noticeAcceptedAt:''});
+
+export const workspaceV2Schema=z.object({
  version:z.literal(2),profile:profileSchema,
+ receipts:z.array(receiptSchema).max(2000),expenses:z.array(expenseSchema).max(2000),invoices:z.array(invoiceSchema).max(2000),
+ accounts:z.array(accountSchema).max(40),batches:z.array(batchSchema).max(400),lines:z.array(lineSchema).max(8000),
+ license:licenseStateSchema
+}).strict();
+
+export const workspaceSchema=z.object({
+ version:z.literal(3),profile:profileSchema,security:securitySchema,review:reviewSchema,
  receipts:z.array(receiptSchema).max(2000),expenses:z.array(expenseSchema).max(2000),invoices:z.array(invoiceSchema).max(2000),
  accounts:z.array(accountSchema).max(40),batches:z.array(batchSchema).max(400),lines:z.array(lineSchema).max(8000),
  license:licenseStateSchema
@@ -131,12 +151,17 @@ export const workspaceSchema=z.object({
 export function migrateWorkspace(value:unknown):unknown{
  if(!value||typeof value!=='object')return value;
  const w=value as Record<string,unknown>;
- if(w.version===1){
-  const v1=workspaceV1Schema.parse(w);
-  return {version:2,profile:v1.profile,receipts:v1.receipts,expenses:v1.expenses,invoices:v1.invoices,
+ let current=w;
+ if(current.version===1){
+  const v1=workspaceV1Schema.parse(current);
+  current={version:2,profile:v1.profile,receipts:v1.receipts,expenses:v1.expenses,invoices:v1.invoices,
    accounts:[],batches:[],lines:[],license:{key:'',activatedAt:'',trialStarted:''}};
  }
- return w;
+ if(current.version===2){
+  const v2=workspaceV2Schema.parse(current);
+  current={...v2,version:3,security:blankSecurity(),review:{certificate:''}};
+ }
+ return current;
 }
 export const parseWorkspace=(value:unknown):Workspace=>workspaceSchema.parse(migrateWorkspace(value));
 
