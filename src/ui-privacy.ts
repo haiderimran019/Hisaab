@@ -6,6 +6,7 @@ import {RECOVERY_COUNT} from './totp';
 import type {ReviewStatus} from './review';
 import {REVIEWERS} from './review';
 import {serviceConfigured,pingEnabled} from './service';
+import {storedTheme,THEMES} from './theme';
 
 export type SecurityCtx={workspace:Workspace;review:ReviewStatus;twoFactorDraft:TwoFactorDraft|null;demo:boolean};
 export type TwoFactorDraft={secret:string;uri:string;codes:string[];confirmed:boolean};
@@ -59,6 +60,13 @@ export function securityPanel(ctx:SecurityCtx){
      <p>Once a day, Hisaab would say that it was opened, which build it is, and whether it has a licence — and nothing else. No identifier of any kind is sent, so we could see a trend, never a person. It is off by default and we would rather undercount than take a number from you without asking. Nothing in the app changes either way.</p></div>
     <label class="switch"><input type="checkbox" id="usage-ping" ${pingEnabled()?'checked':''}><span></span></label>
    </div>`:''}
+
+   <div class="control">
+    <div><b>Appearance</b>
+     <p>Light reads better in daylight, which is where most people do this. Dark follows your device unless you pick one.</p></div>
+    <label class="year-picker"><span class="sr-only">Appearance</span>
+     <select id="theme">${THEMES.map(([value,label])=>`<option value="${value}" ${storedTheme()===value?'selected':''}>${h(label)}</option>`).join('')}</select>${icon('chevron-down')}</label>
+   </div>
 
    <div class="control">
     <div><b>Read the privacy notice</b>

@@ -1,4 +1,47 @@
 # Visual contract
-Operate mode. The supplied reference fixes the visual direction: black/charcoal, orange, white and Poppins. Desktop composition: persistent left rail, quiet utility header, ledger-first overview, wide cash-flow plot, narrow tax reserve column. Mobile: compact header, two-column totals, stacked chart and tax panel, horizontally scrollable ledger and bottom navigation. Panel boundaries use a single subtle border. Consistent Lucide stroke icons. Warm orange is reserved for selected navigation, meaningful chart series and primary actions; green means recorded/received. No illustrative stock art. All example amounts explicitly belong to Demo workspace.
 
-The concept seed ran degraded because its remote roll service was unavailable; user-pinned theme takes precedence. Seed reference seed:d9a43acf426afd5c. No generated boards or unchosen designs are represented as approved.
+## Current direction (22 October 2026)
+
+**Light by default, dark on request.** This is a tool people open in daylight, on
+a cheap phone, often outdoors — and the Filing Pack it produces is ink on paper.
+Dark follows the device setting and can be forced either way from Settings; the
+choice lives in plain browser storage so it applies on the lock screen too.
+
+**Brand is a deep green; alarm keeps the amber to itself.** The previous palette
+used one orange for the primary action, the selected tab, a pending decision and
+an unexplained difference. When everything is the same colour, nothing reads as
+what it is. Green carries trust, growth and money here. Attention states —
+"needs a decision", a count waiting on you — are amber. A real problem is red.
+Reconciled is green. These never borrow each other's colour.
+
+**Tokens, not hex.** Every surface, line, text and state colour is a semantic
+custom property defined once per theme (`--bg`, `--surface`, `--line`, `--ink`,
+`--muted`, `--brand`, `--on-brand`, `--warn-*`, `--danger-*`, `--ok-*`, `--info-*`,
+`--shadow`). The stylesheet names roles, never colours, so a theme is a block of
+variables rather than a sweep through the file.
+
+**The printed sheet is exempt.** `.invoice-paper`, the Filing Pack and everything
+inside `@media print` stay ink on paper in both themes. An invoice should not
+change colour because of a display preference.
+
+Poppins throughout. Flat surfaces, 3px corners, hairline borders, no gradients.
+Consistent Lucide stroke icons at one weight. No illustrative stock art. All
+example amounts explicitly belong to the Demo workspace.
+
+## Layout
+
+Four destinations — Today, Money, Tax, Filing Pack — plus Settings and the
+privacy notice. Record types (income, expenses, invoices, statement lines) are
+tabs inside Money, not top-level navigation. One Add action is reachable from
+every page, and from the middle of the bar on a phone.
+
+Desktop: persistent left rail, quiet utility header. Phone: the same content with
+wide tables stacked into labelled cards rather than scrolled sideways.
+
+## History
+
+The original brief fixed charcoal surfaces with orange accents, taken from a
+supplied reference. That held until 22 October 2026, when the founder asked for a
+palette that reads welcoming, fresh and trustworthy. The charcoal/orange scheme is
+recorded in `PRODUCT.md` as the original commitment; this document supersedes it
+for colour. Poppins, the responsive contract and the honesty rules are unchanged.

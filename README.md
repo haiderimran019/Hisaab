@@ -2,7 +2,7 @@
 
 **Your work. Your worth.** Finance for independent workers in Pakistan.
 
-Invoices, multi-currency income, actual PKR settlement after fees, expense evidence and source-linked Pakistani tax estimates, in a private encrypted workspace. Built with TypeScript, Vite, Decimal.js, Zod and WebCrypto. Poppins typography and a charcoal/orange interface.
+Invoices, multi-currency income, actual PKR settlement after fees, expense evidence and source-linked Pakistani tax estimates, in a private encrypted workspace. Built with TypeScript, Vite, Decimal.js, Zod and WebCrypto. Poppins typography, light by default with a dark theme that follows your device, and a palette that keeps brand green and alarm amber apart — see [DESIGN.md](DESIGN.md).
 
 ![Hisaab desktop demo](docs/screenshots/desktop.jpg)
 

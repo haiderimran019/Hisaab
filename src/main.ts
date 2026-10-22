@@ -10,6 +10,7 @@ import {demo} from './demo';
 import './style.css';
 const icons={LayoutDashboard,ArrowDownLeft,ArrowUpRight,ReceiptText,FileText,Calculator,Settings,Plus,ArrowRight,Download,Search,ChevronDown,ShieldCheck,LockKeyhole,Wallet,Menu,X,Trash2,Pencil,ExternalLink,RefreshCw,Check,CircleHelp,LogOut,TrendingUp,CircleDollarSign,Landmark,Clock,Upload,Printer,Eye,Copy,OctagonAlert};
 const app=document.querySelector<HTMLDivElement>('#app')!;
+initTheme();
 import {icon,fmt,dateLabel,today} from './format';
 import {accountSchema,batchSchema,accountKinds,type StatementLine} from './core';
 import {parseCsv,findHeader,suggestMapping,buildImport,buildFromRows,MAX_FILE_BYTES,type FieldName} from './statements';
@@ -20,6 +21,7 @@ import {homeView} from './ui-home';
 import {securityPanel,privacyNotice,type TwoFactorDraft} from './ui-privacy';
 import {randomSecret,otpauthUri,verifyCode,makeRecoveryCodes,hashAll,hashRecovery,RECOVERY_COUNT} from './totp';
 import {checkReview,packDigest,type ReviewStatus} from './review';
+import {initTheme,applyTheme,storedTheme,type Theme} from './theme';
 import {pingOnce,setPingEnabled,subscribe,serviceConfigured,readerConfigured,extractStatement,EXTRACT_TYPES,READER_NAME} from './service';
 let workspace=demo(),mode:'demo'|'vault'|'locked'='demo',page='Today',year=2027,query='',categoryFilter='all',railFilter='all';
 let key:CryptoKey|null=null,salt:Uint8Array|null=null,lastActivity=Date.now(),busy=false,drawer='',editId='',fx: {rates:Record<string,number>,time:string,expires:string}|null=null;
@@ -558,6 +560,9 @@ function bindSecurity(){
  document.querySelectorAll<HTMLElement>('[data-copy]').forEach(el=>el.onclick=async()=>{
   try{await navigator.clipboard.writeText(el.dataset.copy!);toast('Copied. Paste it somewhere safe, then clear your clipboard.');}
   catch{toast('This browser would not let the page use the clipboard. Select the text and copy it by hand.');}
+ });
+ document.querySelector<HTMLSelectElement>('#theme')?.addEventListener('change',ev=>{
+  applyTheme((ev.target as HTMLSelectElement).value as Theme);
  });
  document.querySelector<HTMLSelectElement>('#autolock')?.addEventListener('change',ev=>{
   const minutes=Number((ev.target as HTMLSelectElement).value) as 1|5|15|30;

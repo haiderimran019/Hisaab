@@ -97,6 +97,20 @@
 - The phone layout was checked at 375 x 812 in a desktop engine, not on a real device.
 - No accessibility pass has been done on the new tabs or the Add sheet — keyboard order and screen-reader labelling of the tab bar are unexamined.
 
+## Added 22 October 2026 — a new palette, light and dark
+
+- **The stylesheet was tokenised mechanically, not by hand.** 257 hard-coded colours across 181 distinct values were classified by hue, lightness and saturation into semantic tokens, and the mapping was reviewed before it was applied. Rules belonging to the printed sheet were excluded by selector so an invoice stays ink on paper in both themes — confirmed in dark mode: the paper is `rgb(255,255,255)` on `rgb(23,23,23)` text.
+- **Two themes.** Light is the default; dark follows `prefers-color-scheme` and either can be forced from Settings. Verified in the browser: system-dark gives `--bg:#0e1512`, forcing light gives `#f7f6f3`, the choice persists in `localStorage`, and choosing "Match my device" clears it.
+- **Contrast was audited programmatically rather than by eye.** A script walked every rendered text node on all six pages in both themes, resolved each element's effective background through its ancestors, and reported anything under a 3:1 ratio. Two real failures were found and fixed: the Filing Pack warning box had been excluded from tokenisation by an over-broad print guard and was dark-on-dark at **1.04:1** — effectively invisible — and the breadcrumb separator was at 1.61:1. After the fixes the only remaining item below 3:1 in either theme is the breadcrumb slash, which is decorative.
+- **Brand and alarm were separated.** "Needs a decision" chips, waiting counts and navigation badges had inherited the brand colour, which made a pending decision read as success. They now use the warning tokens.
+- 101 app tests and 28 server tests still pass; `tsc` clean.
+
+### Not verified for this change
+
+- The automated classifier assigned roles from colour values, not from how each colour was used. It was reviewed and spot-checked, and the contrast audit would catch an inversion that made text unreadable — but a colour that is merely *wrong* rather than illegible could have survived. The quiet corners of the app (drawers mid-edit, error states, the FX calculator) were not individually inspected in both themes.
+- No colour-blind simulation was run. Green/amber/red carry meaning in several places, and while each is paired with a word or an icon, that pairing has not been checked systematically.
+- Nobody has been asked whether the new palette reads as more trustworthy. That was the goal, and it remains an assertion.
+
 ## Limits
 
 The five-minute lock is implemented and reviewed; a full timed idle soak is not recorded. Receipt upload uses file MIME/signature/size validation, but all file types have not been exercised in the browser. Downloaded backups are verified in Node crypto tests and browser restoration; arbitrary malformed backup fuzzing is not exhaustive. Live FX depends on provider/network availability and is not a price guarantee. No real bank transfer, FBR submission, email, subscription payment or government registry verification was performed.
