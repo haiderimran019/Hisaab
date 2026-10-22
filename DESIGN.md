@@ -7,17 +7,22 @@ a cheap phone, often outdoors — and the Filing Pack it produces is ink on pape
 Dark follows the device setting and can be forced either way from Settings; the
 choice lives in plain browser storage so it applies on the lock screen too.
 
-**Brand is a deep green; alarm keeps the amber to itself.** The previous palette
-used one orange for the primary action, the selected tab, a pending decision and
-an unexplained difference. When everything is the same colour, nothing reads as
-what it is. Green carries trust, growth and money here. Attention states —
-"needs a decision", a count waiting on you — are amber. A real problem is red.
-Reconciled is green. These never borrow each other's colour.
+**White first.** The page and every card are white or within a shade of it,
+separated by a hairline and the faintest lift rather than by blocks of grey.
+Rounded corners, generous padding, soft shadows in light and plain borders in
+dark, where shadows disappear.
+
+**Brand is a soft indigo; money keeps its own language.** An earlier palette used
+one orange for the primary action, the selected tab, a pending decision and an
+unexplained difference — when everything is the same colour, nothing reads as
+what it is. Indigo is the interface. Green arrives, red leaves, amber wants your
+attention, red is a problem. Those four never borrow the brand's colour and the
+brand never borrows theirs.
 
 **Tokens, not hex.** Every surface, line, text and state colour is a semantic
 custom property defined once per theme (`--bg`, `--surface`, `--line`, `--ink`,
 `--muted`, `--brand`, `--on-brand`, `--warn-*`, `--danger-*`, `--ok-*`, `--info-*`,
-`--shadow`). The stylesheet names roles, never colours, so a theme is a block of
+`--shadow`, `--radius*`). The stylesheet names roles, never colours, so a theme is a block of
 variables rather than a sweep through the file.
 
 **The printed sheet is exempt.** `.invoice-paper`, the Filing Pack and everything

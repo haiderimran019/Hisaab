@@ -88,7 +88,7 @@ function render(){
  app.innerHTML=`<aside class="sidebar"><a href="#" class="brand" data-page="Home"><span class="brand-symbol">${icon('wallet')}</span>hisaab<span class="brand-dot">.</span></a><div class="workspace-switch"><span class="avatar">${mode==='demo'?'D':h((workspace.profile.name||'P')[0])}</span><div><b>${mode==='demo'?'Demo workspace':h(workspace.profile.name||'Private workspace')}</b><small>${mode==='demo'?'Explore with sample data':'Encrypted on this device'}</small></div>${icon('chevron-down')}</div><nav aria-label="Main navigation">${nav.map(([p,i,label])=>{
   const waiting=p==='Money'?workspace.lines.filter(l=>l.status==='pending').length+workspace.invoices.filter(v=>v.status==='Sent').length:0;
   return `<button data-page="${p}" class="nav-item ${page===p?'active':''}" ${page===p?'aria-current="page"':''}>${icon(i)}<span>${h(label)}</span>${waiting?`<span class="nav-count">${waiting}</span>`:''}</button>`;
- }).join('')}</nav><div class="sidebar-bottom"><div class="local-card">${icon('shield-check')}<b>Your books. Your device.</b><p>Encrypted storage.<br>No bank credentials needed.</p><button class="text-link" data-page="Privacy">What we can and cannot see ${icon('arrow-right')}</button></div><button class="profile" data-page="Settings"><span class="avatar small">${mode==='demo'?'D':h((workspace.profile.name||'P')[0])}</span><span><b>${mode==='demo'?'Demo mode':'Private workspace'}</b><small>${mode==='demo'?'Not your financial data':'Auto-lock after 5 minutes'}</small></span>${icon('settings')}</button></div></aside>
+ }).join('')}</nav><div class="sidebar-bottom"><div class="local-card">${icon('shield-check')}<b>Your books. Your device.</b><p>Encrypted storage.<br>No bank credentials needed.</p><button class="text-link" data-page="Privacy">What we can see ${icon('arrow-right')}</button></div><button class="profile" data-page="Settings"><span class="avatar small">${mode==='demo'?'D':h((workspace.profile.name||'P')[0])}</span><span><b>${mode==='demo'?'Demo mode':'Private workspace'}</b><small>${mode==='demo'?'Not your financial data':'Auto-lock after 5 minutes'}</small></span>${icon('settings')}</button></div></aside>
  <div class="main-wrap"><header class="topbar"><button class="icon-btn mobile-menu" data-action="menu" aria-label="Open navigation">${icon('menu')}</button><div class="breadcrumb">Workspace <span>/</span> <b>${page}</b></div><div class="header-actions"><span class="local-tag">${icon('shield-check')}${mode==='demo'?'Sample data':'Encrypted locally'}</span><label class="year-picker"><span class="sr-only">Tax year</span><select id="year"><option value="2027" ${year===2027?'selected':''}>Tax year 2027</option><option value="2026" ${year===2026?'selected':''}>Tax year 2026</option></select>${icon('chevron-down')}</label><button class="icon-btn" data-action="${mode==='vault'?'lock':'create-vault'}" aria-label="${mode==='vault'?'Lock workspace':'Create private workspace'}">${icon('lock-keyhole')}</button></div></header>
  <main><div class="page-title"><div><h1>${page==='Today'?`Your work. <span>Your worth.</span>`:h(String(nav.find(([n])=>n===page)?.[2]??page))}</h1><p>${subheading()}</p></div><div class="title-actions">${page==='Money'?button('Add','add'):page==='Pack'?button('Export worksheet','worksheet','primary','download'):page==='Tax'?button('Export worksheet','worksheet','secondary','download'):''}</div></div>
  ${mode==='demo'?`<div class="demo-banner"><span><span class="status-dot"></span>You're exploring a demo. All clients and amounts are examples.</span><button data-action="${hasVault()?'open-vault':'create-vault'}">${hasVault()?'Unlock your workspace':'Create your private workspace'} ${icon('arrow-right')}</button></div>`:''}
@@ -109,7 +109,56 @@ function homeChart(){
  return `<section class="panel chart-panel"><div class="panel-head"><div><h2>Money reaching you, month by month</h2>
   <p>Take-home after fees and withholding, across the July to June tax year.</p></div></div>${chart(rows)}</section>`;
 }
-function chart(rows:Receipt[]){const values=Array.from({length:12},(_,i)=>{const m=(i+6)%12+1,y=i<6?year-1:year;const rs=rows.filter(r=>r.date.startsWith(`${y}-${String(m).padStart(2,'0')}`));return {gross:sum(rs.map(r=>receiptMath(r).gross)),net:sum(rs.map(r=>receiptMath(r).net))};});const max=Math.max(100000,...values.map(v=>v.gross))*1.18;const W=780,H=235,left=65,right=18,top=18,bottom=34,cw=W-left-right,ch=H-top-bottom;const labels=['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'];return `<div class="chart-wrap"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Monthly gross and take-home PKR for July through June. Exact totals available in Reports.">${[0,1,2,3].map(i=>{const val=max*(3-i)/3,y=top+ch*i/3;return `<line x1="${left}" x2="${W-right}" y1="${y}" y2="${y}" stroke="#303133" stroke-dasharray="3 5"/><text x="0" y="${y+4}" fill="#999ba0" font-size="11">${val>=1000000?(val/1000000).toFixed(1)+'m':Math.round(val/1000)+'k'}</text>`;}).join('')}${values.map((v,i)=>{const x=left+cw*i/12+12,bh=v.gross/max*ch,nh=v.net/max*ch;return `<g><title>${labels[i]}: gross ${fmt(v.gross)}, take-home ${fmt(v.net)}</title><rect x="${x}" y="${top+ch-bh}" width="17" height="${bh}" rx="3" fill="#ff762a"/><rect x="${x+20}" y="${top+ch-nh}" width="17" height="${nh}" rx="3" fill="#65402d"/><text x="${x+16}" y="${H-6}" text-anchor="middle" fill="#a4a5a9" font-size="11">${labels[i]}</text></g>`;}).join('')}</svg></div>`;}
+/* A soft area chart rather than paired bars: the shape of a year reads faster
+   than twenty-four columns, and the gap between what clients paid and what
+   reached you is the thing worth seeing. Colours come from CSS variables so the
+   chart follows the theme instead of carrying its own palette. */
+function chart(rows:Receipt[]){
+ const values=Array.from({length:12},(_,i)=>{
+  const m=(i+6)%12+1,y=i<6?year-1:year;
+  const rs=rows.filter(r=>r.date.startsWith(`${y}-${String(m).padStart(2,'0')}`));
+  return {gross:sum(rs.map(r=>receiptMath(r).gross)),net:sum(rs.map(r=>receiptMath(r).net)),count:rs.length};
+ });
+ const max=Math.max(100000,...values.map(v=>v.gross))*1.15;
+ const W=780,H=250,left=62,right=20,top=18,bottom=36;
+ const cw=W-left-right,ch=H-top-bottom;
+ const labels=['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'];
+ const x=(i:number)=>left+cw*i/11;
+ const y=(v:number)=>top+ch-(v/max)*ch;
+ /** Catmull-Rom through the points, so the line curves without overshooting. */
+ const curve=(get:(v:typeof values[number])=>number)=>{
+  const pts=values.map((v,i)=>[x(i),y(get(v))] as const);
+  let d=`M ${pts[0][0]} ${pts[0][1]}`;
+  for(let i=0;i<pts.length-1;i++){
+   const p0=pts[i-1]??pts[i],p1=pts[i],p2=pts[i+1],p3=pts[i+2]??pts[i+1];
+   const c1x=p1[0]+(p2[0]-p0[0])/6,c1y=p1[1]+(p2[1]-p0[1])/6;
+   const c2x=p2[0]-(p3[0]-p1[0])/6,c2y=p2[1]-(p3[1]-p1[1])/6;
+   d+=` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+  }
+  return d;
+ };
+ const netPath=curve(v=>v.net),grossPath=curve(v=>v.gross);
+ const area=`${netPath} L ${x(11)} ${top+ch} L ${x(0)} ${top+ch} Z`;
+ const money=(v:number)=>v>=1000000?(v/1000000).toFixed(1)+'m':Math.round(v/1000)+'k';
+ return `<div class="chart-wrap"><svg viewBox="0 0 ${W} ${H}" role="img"
+   aria-label="Take-home and gross PKR by month, July to June. Exact totals are in the Filing Pack.">
+  <defs><linearGradient id="net-fill" x1="0" x2="0" y1="0" y2="1">
+   <stop offset="0%" stop-color="var(--brand)" stop-opacity=".28"/>
+   <stop offset="100%" stop-color="var(--brand)" stop-opacity="0"/></linearGradient></defs>
+  ${[0,1,2,3].map(i=>{const val=max*(3-i)/3,gy=top+ch*i/3;
+   return `<line x1="${left}" x2="${W-right}" y1="${gy}" y2="${gy}" stroke="var(--line)"/>
+    <text x="0" y="${gy+4}" fill="var(--muted)" font-size="11">${money(val)}</text>`;}).join('')}
+  <path d="${area}" fill="url(#net-fill)"/>
+  <path d="${grossPath}" fill="none" stroke="var(--brand-dim)" stroke-width="2" stroke-dasharray="5 4"/>
+  <path d="${netPath}" fill="none" stroke="var(--brand)" stroke-width="2.5" stroke-linecap="round"/>
+  ${values.map((v,i)=>`<g><title>${labels[i]}: ${v.count} payment${v.count===1?'':'s'}, clients paid ${fmt(v.gross)}, reached you ${fmt(v.net)}</title>
+   <rect x="${x(i)-18}" y="${top}" width="36" height="${ch}" fill="transparent"/>
+   ${v.count?`<circle cx="${x(i)}" cy="${y(v.net)}" r="4" fill="var(--surface)" stroke="var(--brand)" stroke-width="2.5"/>`:''}
+   <text x="${x(i)}" y="${H-8}" text-anchor="middle" fill="var(--muted)" font-size="11">${labels[i]}</text></g>`).join('')}
+ </svg>
+ <p class="chart-key"><span class="key-net"></span>What reached you <span class="key-gross"></span>What clients paid</p>
+ </div>`;
+}
 /** A blank client reads as a stated absence, never an empty-looking cell. */
 const clientLabel=(c:string)=>c.trim()?h(c):'<span class="muted">No client recorded</span>';
 function incomeTable(rows:Receipt[],actions=true){return `<div class="table-scroll"><table class="cards"><thead><tr><th>Client / payment</th><th>Received</th><th>Gross</th><th>Take-home</th>${actions?'<th>Actions</th>':''}</tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td data-label="Client"><div class="client-cell"><span class="client-avatar">${h(r.client.trim()?r.client.slice(0,2).toUpperCase():'—')}</span><div><b>${clientLabel(r.client)}</b><small>${h(r.description||r.rail)}</small></div></div></td><td data-label="Received">${dateLabel(r.date)}<small>${h(r.rail)}</small></td><td data-label="Gross">${fmt(Number(r.gross),r.currency)}<small>${r.rate} PKR/${r.currency}</small></td><td data-label="Take-home" class="amount-cell">${fmt(receiptMath(r).net)}<small class="green">${icon('check')} Recorded</small></td>${actions?`<td data-label="Actions"><div class="row-actions"><button class="icon-btn" aria-label="Edit income for ${h(r.client||'an unnamed source')}" data-edit-income="${r.id}">${icon('pencil')}</button><button class="icon-btn" aria-label="Delete income for ${h(r.client||'an unnamed source')}" data-delete="receipts:${r.id}">${icon('trash-2')}</button></div></td>`:''}</tr>`).join(''):`<tr><td colspan="5"><div class="empty">${icon('wallet')}<h3>No income in this tax year</h3><p>Record a payment when it reaches you. An unpaid invoice stays in Invoices.</p>${button('Record income','new-income')}</div></td></tr>`}</tbody></table></div>`;}

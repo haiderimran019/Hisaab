@@ -111,6 +111,18 @@
 - No colour-blind simulation was run. Green/amber/red carry meaning in several places, and while each is paired with a word or an icon, that pairing has not been checked systematically.
 - Nobody has been asked whether the new palette reads as more trustworthy. That was the goal, and it remains an assertion.
 
+## Added 22 October 2026 — white-first interface
+
+- The palette moved to white-first with a soft indigo brand, taking the card, spacing and chart patterns from dashboard references the founder supplied. Surfaces are white separated by hairlines and a faint lift; corners are rounded through `--radius` tokens rather than per-rule pixel values.
+- **The monthly chart was rewritten.** It had carried its own hard-coded palette in inline SVG attributes — orange bars and dark gridlines that the stylesheet tokenisation never touched, and which would have been wrong on any light theme. It is now a smooth area chart drawing every colour from CSS variables, with take-home filled and what clients paid as a dashed line above it, so the gap between them is the visible thing.
+- Contrast re-audited by script across all six pages in both themes at a stricter 3.5:1 threshold. Nothing fails except the decorative breadcrumb slash.
+- 101 app tests and 28 server tests pass; `tsc` clean in both projects.
+
+### Not verified for this change
+
+- The references were used for layout and colour relationships only; no artwork, illustration or component was copied from them.
+- Still no colour-blind simulation, and still nobody has been asked whether this reads better than what it replaced.
+
 ## Limits
 
 The five-minute lock is implemented and reviewed; a full timed idle soak is not recorded. Receipt upload uses file MIME/signature/size validation, but all file types have not been exercised in the browser. Downloaded backups are verified in Node crypto tests and browser restoration; arbitrary malformed backup fuzzing is not exhaustive. Live FX depends on provider/network availability and is not a price guarantee. No real bank transfer, FBR submission, email, subscription payment or government registry verification was performed.
