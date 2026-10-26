@@ -29,7 +29,7 @@ variables rather than a sweep through the file.
 inside `@media print` stay ink on paper in both themes. An invoice should not
 change colour because of a display preference.
 
-Poppins throughout. Flat surfaces, 3px corners, hairline borders, no gradients.
+Poppins throughout. Rounded corners through radius tokens, hairline borders, no gradients.
 Consistent Lucide stroke icons at one weight. No illustrative stock art. All
 example amounts explicitly belong to the Demo workspace.
 

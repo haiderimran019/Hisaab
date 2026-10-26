@@ -42,11 +42,11 @@ const b64urlToBytes=(s:string)=>{
  const binary=atob(padded);
  return Uint8Array.from(binary,c=>c.charCodeAt(0));
 };
-export async function licenceAllows(key:string,publicKeyJwk:string,todayIso:string):Promise<Result<{name:string;plan:string}>>{
+export async function licenceAllows(key:string,publicKeyJwk:string,todayIso:string):Promise<Result<{id:string;name:string;plan:string}>>{
  if(!publicKeyJwk)return err(500,'This service has no licence key configured, so paid features cannot be checked.');
  const parts=key.replace(/\s/g,'').split('.');
  if(parts.length!==3||parts[0]!=='HSB1')return err(402,'That licence key is not readable.');
- let payload:{plan?:string;expires?:string;name?:string;v?:number};
+ let payload:{plan?:string;expires?:string;name?:string;v?:number;id?:string};
  let signed:Uint8Array,signature:Uint8Array;
  try{
   signed=b64urlToBytes(parts[1]);signature=b64urlToBytes(parts[2]);
@@ -58,9 +58,12 @@ export async function licenceAllows(key:string,publicKeyJwk:string,todayIso:stri
   if(!valid)return err(402,'That licence key does not verify.');
  }catch{return err(500,'The licence key could not be checked.');}
  if(payload.v!==1||typeof payload.expires!=='string')return err(402,'That licence key is not one this service knows.');
+ // The id is what the per-licence annual quota counts against, so a key without
+ // one cannot be metered and is refused rather than allowed through uncounted.
+ if(typeof payload.id!=='string'||!payload.id)return err(402,'That licence key is missing its identifier.');
  if(payload.expires<todayIso)return err(402,`That licence expired on ${payload.expires}. Your records are untouched; renew to read documents again.`);
  if(payload.plan!=='pro'&&payload.plan!=='accountant')return err(402,'This plan does not include reading documents.');
- return ok({name:typeof payload.name==='string'?payload.name.slice(0,80):'',plan:payload.plan});
+ return ok({id:payload.id.slice(0,80),name:typeof payload.name==='string'?payload.name.slice(0,80):'',plan:payload.plan});
 }
 
 /** What the model is asked for. Deliberately narrow: transcribe, do not interpret. */

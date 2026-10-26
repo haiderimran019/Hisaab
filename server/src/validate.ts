@@ -77,3 +77,192 @@ export async function rateKey(ip:string,day:string,secret:string){
  const digest=await crypto.subtle.digest('SHA-256',data);
  return [...new Uint8Array(digest)].slice(0,8).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
+
+/* ---------------------------------------------------------------------------
+   Readers for the portal and the review broker.
+
+   Every one of these goes through onlyKeys, which is what keeps the central
+   guarantee true as the service grows: a body carrying `income`, `client`,
+   `taxDue` or `lines` is refused by shape, at every route, without any route
+   having to remember to check. The test suite fires those payloads at all of
+   them. If someone adds an endpoint and forgets onlyKeys, that test fails. */
+
+export const TAX_YEARS=['2026','2027'] as const;
+export const LICENCE_PLANS=['pro','accountant'] as const;
+export const CURRENCIES=['PKR','USD'] as const;
+
+/** A short opaque identifier we generated: uuid, or our 48-hex tokens. */
+const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^[0-9a-f]{48}$/;
+export const isId=(v:unknown):v is string=>typeof v==='string'&&ID.test(v);
+
+/** Sign in to the portal: either ask for an emailed link, or present a Google
+    ID token. Never both, so there is one code path per method. */
+export type SignInBody={method:'link';email:string}|{method:'google';idToken:string};
+export function readSignIn(body:unknown):Result<SignInBody>{
+ const checked=onlyKeys(body,['email','idToken']);
+ if(!checked.ok)return checked;
+ const {email,idToken}=checked.value;
+ if(email!==undefined&&idToken!==undefined)
+  return err(400,'Send either an email address or a Google sign-in, not both.');
+ if(typeof idToken==='string'){
+  if(idToken.length<40||idToken.length>4096)return err(400,'That Google sign-in could not be read.');
+  return ok({method:'google',idToken});
+ }
+ const cleaned=cleanEmail(email);
+ if(!cleaned.ok)return cleaned;
+ return ok({method:'link',email:cleaned.value});
+}
+
+/** Exchange a single-use emailed token for a session. */
+export function readSignInExchange(body:unknown):Result<{token:string}>{
+ const checked=onlyKeys(body,['token']);
+ if(!checked.ok)return checked;
+ const {token}=checked.value;
+ if(typeof token!=='string'||!/^[0-9a-f]{48}$/.test(token))
+  return err(400,'That sign-in link is not valid. Ask for a new one.');
+ return ok({token});
+}
+
+/** Ask a named practitioner to review a pack. The fingerprint is a hash of the
+    pack; the pack itself goes to the practitioner directly and never here. */
+export type ReviewRequestBody={reviewerId:string;fingerprint:string;taxYear:string};
+export function readReviewRequest(body:unknown):Result<ReviewRequestBody>{
+ const checked=onlyKeys(body,['reviewerId','fingerprint','taxYear']);
+ if(!checked.ok)return checked;
+ const {reviewerId,fingerprint,taxYear}=checked.value;
+ if(!isId(reviewerId))return err(400,'Choose a reviewer from the published list.');
+ if(typeof fingerprint!=='string'||!/^[0-9a-f]{64}$/.test(fingerprint))
+  return err(400,'A pack fingerprint must be a SHA-256 hash. Hisaab never sends the pack itself to a server.');
+ if(typeof taxYear!=='string'||!(TAX_YEARS as readonly string[]).includes(taxYear))
+  return err(400,'taxYear must be one of: '+TAX_YEARS.join(', '));
+ return ok({reviewerId,fingerprint,taxYear});
+}
+
+/** A practitioner accepting, declining, or returning a signed review. */
+export type ReviewUpdateBody={jobId:string;status:'accepted'|'signed'|'declined';signature:string};
+export function readReviewUpdate(body:unknown):Result<ReviewUpdateBody>{
+ const checked=onlyKeys(body,['jobId','status','signature']);
+ if(!checked.ok)return checked;
+ const {jobId,status,signature}=checked.value;
+ if(!isId(jobId))return err(400,'That is not a review job we know.');
+ if(status!=='accepted'&&status!=='signed'&&status!=='declined')
+  return err(400,'status must be accepted, signed or declined.');
+ if(status==='signed'){
+  if(typeof signature!=='string'||!/^[A-Za-z0-9+/_=.-]{40,2048}$/.test(signature))
+   return err(400,'A signed review must carry the signature produced by your reviewer key.');
+  return ok({jobId,status,signature});
+ }
+ if(signature!==undefined&&signature!=='')return err(400,'Only a signed review carries a signature.');
+ return ok({jobId,status,signature:''});
+}
+
+/** A real delete, not a flag. server/README.md named this as the missing path. */
+export type ErasureBody={scope:'subscriber'|'licence'|'all';confirm:true};
+export function readErasure(body:unknown):Result<ErasureBody>{
+ const checked=onlyKeys(body,['scope','confirm']);
+ if(!checked.ok)return checked;
+ const {scope,confirm}=checked.value;
+ if(scope!=='subscriber'&&scope!=='licence'&&scope!=='all')
+  return err(400,'scope must be subscriber, licence or all.');
+ if(confirm!==true)
+  return err(400,'Erasure is permanent and cannot be undone, so it needs confirm: true.');
+ return ok({scope,confirm:true});
+}
+
+/* ---- admin-only bodies. Still allow-listed; an admin token is not a reason
+        to accept a field this service has no business holding. ---- */
+
+export type IssueBody={keyId:string;licenceKey:string;email:string;name:string;
+ plan:'pro'|'accountant';amountMinor:number;currency:'PKR'|'USD';paymentRef:string;years:number};
+export function readIssue(body:unknown):Result<IssueBody>{
+ const checked=onlyKeys(body,['keyId','licenceKey','email','name','plan','amountMinor','currency','paymentRef','years']);
+ if(!checked.ok)return checked;
+ const {keyId,licenceKey,email,name,plan,amountMinor,currency,paymentRef,years}=checked.value;
+ const cleaned=cleanEmail(email);
+ if(!cleaned.ok)return cleaned;
+ // The key is minted offline by tools/make-license.mjs; this only records it.
+ if(!isId(keyId))return err(400,'keyId must be the uuid printed with the key.');
+ if(typeof licenceKey!=='string'||!licenceKey.startsWith('HSB1.')||licenceKey.length>2048)
+  return err(400,'licenceKey must be the signed key beginning HSB1.');
+ if(typeof name!=='string'||!name.trim()||name.length>80)
+  return err(400,'A licence needs the name to print on it, up to 80 characters.');
+ if(typeof plan!=='string'||!(LICENCE_PLANS as readonly string[]).includes(plan))
+  return err(400,'plan must be one of: '+LICENCE_PLANS.join(', '));
+ // Money as an integer in the smallest unit. A float never touches a sale.
+ if(typeof amountMinor!=='number'||!Number.isSafeInteger(amountMinor)||amountMinor<0||amountMinor>1e11)
+  return err(400,'amountMinor must be a whole number of paisa or cents.');
+ if(typeof currency!=='string'||!(CURRENCIES as readonly string[]).includes(currency))
+  return err(400,'currency must be one of: '+CURRENCIES.join(', '));
+ if(paymentRef!==undefined&&(typeof paymentRef!=='string'||paymentRef.length>80))
+  return err(400,'paymentRef must be a short reference, up to 80 characters.');
+ if(typeof years!=='number'||!Number.isInteger(years)||years<1||years>3)
+  return err(400,'years must be 1, 2 or 3.');
+ return ok({keyId,licenceKey,email:cleaned.value,name:name.trim(),plan:plan as IssueBody['plan'],
+  amountMinor,currency:currency as IssueBody['currency'],
+  paymentRef:typeof paymentRef==='string'?paymentRef:'',years});
+}
+
+export type ReviewerBody={name:string;firm:string;registration:string;publicKey:string;contactEmail:string};
+export function readReviewer(body:unknown):Result<ReviewerBody>{
+ const checked=onlyKeys(body,['name','firm','registration','publicKey','contactEmail']);
+ if(!checked.ok)return checked;
+ const {name,firm,registration,publicKey,contactEmail}=checked.value;
+ if(typeof name!=='string'||!name.trim()||name.length>80)return err(400,'A reviewer needs a name.');
+ const email=cleanEmail(contactEmail);
+ if(!email.ok)return email;
+ // Stored as text and handed to the app, which verifies signatures against it.
+ // Parsed here only to refuse something that could never be a key.
+ if(typeof publicKey!=='string'||publicKey.length<40||publicKey.length>2048)
+  return err(400,'publicKey must be the reviewer public JWK.');
+ try{
+  const jwk=JSON.parse(publicKey) as {kty?:string;crv?:string};
+  if(jwk?.kty!=='EC'||jwk?.crv!=='P-256')
+   return err(400,'A reviewer key must be an EC P-256 JWK, matching the app verifier.');
+ }catch{return err(400,'publicKey must be valid JSON.');}
+ for(const [label,value] of [['firm',firm],['registration',registration]] as const)
+  if(value!==undefined&&(typeof value!=='string'||value.length>80))
+   return err(400,`${label} must be a short string, up to 80 characters.`);
+ return ok({name:name.trim(),firm:typeof firm==='string'?firm:'',
+  registration:typeof registration==='string'?registration:'',
+  publicKey,contactEmail:email.value});
+}
+
+/* These three used to read their fields by hand, which meant an unknown field
+   was ignored rather than refused — the one shape of hole the allow-list exists
+   to prevent. The route-table test fires financial payloads at every POST route
+   in the service, and it is these readers that let it assert the same answer
+   everywhere instead of making exceptions. */
+
+export type LicenceStatusBody={keyId:string;status:'active'|'refunded'|'replaced';note:string};
+export function readLicenceStatus(body:unknown):Result<LicenceStatusBody>{
+ const checked=onlyKeys(body,['keyId','status','note']);
+ if(!checked.ok)return checked;
+ const {keyId,status,note}=checked.value;
+ if(typeof keyId!=='string'||!keyId)return err(400,'keyId is required.');
+ if(status!=='active'&&status!=='refunded'&&status!=='replaced')
+  return err(400,'status must be active, refunded or replaced.');
+ if(note!==undefined&&(typeof note!=='string'||note.length>200))
+  return err(400,'note must be a short string, up to 200 characters.');
+ return ok({keyId,status,note:typeof note==='string'?note:''});
+}
+
+export type ReviewerStatusBody={id:string;status:'pending'|'active'|'suspended'};
+export function readReviewerStatus(body:unknown):Result<ReviewerStatusBody>{
+ const checked=onlyKeys(body,['id','status']);
+ if(!checked.ok)return checked;
+ const {id,status}=checked.value;
+ if(!isId(id))return err(400,'id must be the reviewer uuid.');
+ if(status!=='pending'&&status!=='active'&&status!=='suspended')
+  return err(400,'status must be pending, active or suspended.');
+ return ok({id,status});
+}
+
+/** Asking how much of the document allowance is left. A licence key, and
+    nothing else — the quota answer needs no figure from anybody's books. */
+export function readQuotaRequest(body:unknown):Result<{licence:string}>{
+ const checked=onlyKeys(body,['licence']);
+ if(!checked.ok)return checked;
+ const {licence}=checked.value;
+ if(typeof licence!=='string'||!licence)return err(402,'That needs your licence key.');
+ return ok({licence});
+}

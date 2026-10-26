@@ -123,6 +123,18 @@
 - The references were used for layout and colour relationships only; no artwork, illustration or component was copied from them.
 - Still no colour-blind simulation, and still nobody has been asked whether this reads better than what it replaced.
 
+## Added 27 October 2026 — route table, vault key wrapping, and privacy corrections
+
+- The optional Worker was split into a route table and focused modules. Its new sales-ledger, portal, review-broker and document-quota handlers were checked with 58 network-free server tests and a clean TypeScript check. The table-driven test sends financial-record fields to every POST route and requires rejection.
+- The local vault now encrypts a workspace with a random data key and wraps that key with the passphrase. Tests cover old-format backup migration, wrong-key and tamper refusal, passphrase retention, passkey slots, and password changes. All 121 app tests, the production build, and the generated privacy-notice check pass.
+- The production dependency audit found a high-severity issue in Zod 3. The app now uses patched Zod 4; its record schema was updated for the two-argument API. `npm audit --omit=dev --audit-level=high` reports no vulnerabilities.
+
+### Not verified for this change
+
+- The passkey browser interface is not wired into Settings or the lock screen. The WebAuthn adapter and vault tests do not establish that passkey unlock works on a real device or browser. Existing workspaces migrate on passphrase unlock, but that migration has not had a new browser end-to-end check.
+- The Worker has not been deployed against real D1, a mail provider, Google sign-in, or a document reader. The portal and review broker have no customer-facing screens. The public build keeps `API_BASE` empty and does not call the Worker.
+- A production database migration, retention and erasure review, practitioner onboarding, and legal review of the privacy notice remain necessary before any customer data is collected by the optional service.
+
 ## Limits
 
 The five-minute lock is implemented and reviewed; a full timed idle soak is not recorded. Receipt upload uses file MIME/signature/size validation, but all file types have not been exercised in the browser. Downloaded backups are verified in Node crypto tests and browser restoration; arbitrary malformed backup fuzzing is not exhaustive. Live FX depends on provider/network availability and is not a price guarantee. No real bank transfer, FBR submission, email, subscription payment or government registry verification was performed.

@@ -2,12 +2,50 @@ name = "hisaab"
 main = "src/index.ts"
 compatibility_date = "2025-09-01"
 
-# Public, non-secret settings. Change ALLOWED_ORIGIN to wherever the app is served
-# from; several origins can be given, comma separated.
+# Public, non-secret settings. Every optional capability below is OFF until its
+# variables are set, and off means a clear refusal rather than a half-working
+# feature: a service with nothing but DB, ALLOWED_ORIGIN, RATE_SECRET and
+# ADMIN_TOKEN sends no mail, reads no documents, accepts no Google sign-in, and
+# still works.
 [vars]
+# Where the app is served from. Several origins may be given, comma separated.
 ALLOWED_ORIGIN = "https://haiderimran019.github.io"
+# Where /v1/confirm and /v1/unsubscribe live, for the links inside emails.
 PUBLIC_BASE = "https://hisaab.<your-subdomain>.workers.dev"
+# Where the buying portal lives, for the sign-in link inside emails.
+PORTAL_BASE = ""
 MAIL_FROM = ""
+
+# Google sign-in on the portal. Unset = that route returns 501 and the emailed
+# link still works. This is the portal only; no Google script runs in the app,
+# which has no account and is unlocked on the device.
+GOOGLE_CLIENT_ID = ""
+
+# Lets the Worker verify a licence itself instead of trusting the browser.
+# Paste the JWK printed by src/license.ts. This is the PUBLIC half; the private
+# signing key is minted offline by tools/make-license.mjs and must never be here.
+LICENCE_PUBLIC_KEY = ""
+
+# Document reading (/v1/extract). Needs all four of MODEL_PROVIDER, MODEL_NAME,
+# MODEL_KEY (a secret, below) and READER_NAME, or the route returns 501 and
+# reads nothing. Read the provider's retention and training terms for the PAID
+# tier yourself before switching this on.
+MODEL_PROVIDER = ""          # "gemini" or "anthropic"
+MODEL_NAME = ""
+# Who reads the document, shown on the consent screen. Consent is meaningless if
+# the recipient cannot be named, so the route refuses to read without this.
+READER_NAME = ""
+# Documents per licence per tax year (July–June). Default 40 if unset or absurd.
+# The per-IP cap stops a flood; this stops one paying customer costing more than
+# they pay. See the margin note in README.md.
+EXTRACT_ANNUAL_CAP = "40"
+# Country codes where document reading is refused, comma separated, e.g. "PK".
+# /v1/extract is the only route that sends a customer's financial document out
+# of the country. Pakistan has no enacted data protection act today; the pending
+# bill would restrict exactly this. Setting this refuses the route for callers
+# there with a 451 the same day, without a rebuild or a redeploy of the app, and
+# affects nothing else because nothing else in the product leaves the device.
+EXTRACT_BLOCKED_COUNTRIES = ""
 
 [[d1_databases]]
 binding = "DB"
@@ -17,4 +55,5 @@ database_id = "<run: wrangler d1 create hisaab, then paste the id here>"
 # Secrets are NOT set here. Set them once each, and they never appear in git:
 #   wrangler secret put RATE_SECRET     # any long random string
 #   wrangler secret put ADMIN_TOKEN     # a long random string you keep
-#   wrangler secret put RESEND_KEY      # optional, only to send confirmation mail
+#   wrangler secret put RESEND_KEY      # optional, only to send mail
+#   wrangler secret put MODEL_KEY       # optional, only to read documents

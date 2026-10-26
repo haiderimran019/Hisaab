@@ -1,11 +1,11 @@
 # Security policy and data boundaries
 
-Hisaab 1.0 is a local-first, single-person application. It has no financial-data API, account database, telemetry, analytics, server passwords or bank/IRIS integrations. Optional live reference FX calls `https://open.er-api.com/v6/latest/USD` with credentials omitted and no ledger fields. The provider necessarily receives network metadata such as the visitor's IP. Fonts and icons are bundled locally.
+Hisaab 1.0 is a local-first, single-person application. The public build has no configured Hisaab service, account sign-in, telemetry or bank/IRIS integrations. The optional Worker code can hold buyer and subscriber records, but has no API or database for customer financial records. Optional live reference FX calls `https://open.er-api.com/v6/latest/USD` with credentials omitted and no ledger fields. The provider necessarily receives network metadata such as the visitor's IP. Fonts and icons are bundled locally.
 
 ## Implemented controls
 
 - Only encrypted envelopes are stored under `hisaab.encrypted.v1` in browser localStorage. Unencrypted demo data is held in memory, never copied into a newly created vault.
-- AES-256-GCM encryption and authenticated decryption through WebCrypto; fresh random 12-byte IV on every write, random 16-byte salt per vault, PBKDF2-SHA256 with 600,000 iterations, non-extractable in-memory key. Passphrase length 12–256 characters, explicit confirmation on creation, no recovery service.
+- AES-256-GCM encryption and authenticated decryption through WebCrypto. A random 256-bit data key encrypts the workspace with a fresh IV on every write. PBKDF2-SHA256 at 600,000 iterations derives a wrapping key from the passphrase and a random salt. The data key is held as raw bytes in memory while unlocked so it can be wrapped for another unlock method; it is cleared from application references on lock, but JavaScript cannot guarantee memory erasure. Passphrase length is 12–256 characters; there is no server recovery service. Older encrypted workspaces migrate on unlock, and the passphrase unlock method is always retained.
 - Five-minute inactivity lock and page-hide lock. Lock clears UI, print previews, workspace references, attachment references and key references. JavaScript garbage collection is not a guarantee of cryptographic memory erasure. Other-tab storage changes lock the active workspace.
 - Strict Zod schemas and bounded inputs for dates, positive FX, amounts, categories, record counts, imported encrypted envelopes and decrypted workspaces. 8 MB import cap; 3 MB plaintext workspace cap; receipt upload limited to 1 MB PNG/JPEG/PDF, MIME and signature checked. Attachments are encrypted with the workspace and downloaded as files, never executed or embedded as active PDF content.
 - All stored user text is escaped before HTML templating. No user HTML rendering. CSV cells are quoted and leading formula characters are neutralized. Generated financial downloads are explicitly user initiated.
@@ -16,24 +16,24 @@ Hisaab 1.0 is a local-first, single-person application. It has no financial-data
 
 ## Statement import, licence keys and the Filing Pack
 
-- Statement CSVs are parsed entirely in the browser. No file, row or amount is uploaded anywhere, and no OCR or AI service is contacted. A PDF or spreadsheet is refused with an explanation rather than parsed as text.
+- Statement CSVs are parsed entirely in the browser. The optional document-reading path can send a PDF or photo to a named reader only after explicit consent, a configured service, and licence verification. It is disabled in the public build. A spreadsheet is refused rather than parsed as text.
 - Import files are capped at 4 MB and 8,000 rows; a workspace holds at most 8,000 statement lines, 40 accounts and 400 import batches, inside the existing 3 MB plaintext workspace cap.
 - Imported text is validated by strict Zod schemas and escaped before templating on every surface, including the printed Filing Pack. A pack-level test asserts that statement text cannot inject markup or script.
 - A row that cannot be read is listed with its row number and original text; it is never dropped silently, netted, or given a guessed date, sign or amount. A row carrying both a debit and a credit is reported rather than reconciled away.
 - Duplicate detection is a reversible flag, not a deletion. Duplicate lines are excluded from reconciliation arithmetic and shown as such.
 - Reconciliation reports the unexplained difference. The application has no code path that closes a difference by creating a balancing entry.
-- Licence keys are ECDSA P-256 signatures over a plain payload, verified with WebCrypto against a public key compiled into the bundle. The key is stored inside the encrypted workspace and is never transmitted. Verification is offline and anonymous.
+- Licence keys are ECDSA P-256 signatures over a plain payload, verified with WebCrypto against a public key compiled into the bundle. Normal app use verifies a key offline. The optional document-reading request sends the key to the Worker so it can verify the paid entitlement and enforce a per-licence quota; that path is disabled in the public build.
 - **Licence enforcement is client-side and is not a security control.** The gate can be removed by anyone willing to edit the published bundle, and the app states this in Settings. The signing private key is held outside the repository; see `docs/LICENSING.md` for its handling and leak recovery.
 - An absent, invalid or expired key never blocks reading, editing, exporting or backing up a customer's own records.
 
 ## Two-factor codes, recovery and privacy switches
 
 - Two-factor uses RFC 6238 TOTP (SHA-1, 6 digits, 30-second step, one step of drift either side), computed in the browser with WebCrypto and verified against the RFC's published test vectors. Any standard authenticator app works. No phone number, email address or network request is involved at any point.
-- **The second factor is a lock-screen control, not added encryption strength, and the app says so where it is set up.** The shared secret lives inside the encrypted workspace, so it can only be checked after the passphrase has already decrypted it. It stops someone who has watched or guessed the passphrase from opening the workspace in this browser; it does not stop someone holding both a backup file and the passphrase. The passphrase remains the only thing protecting the data at rest.
+- **The second factor is a lock-screen control, not added encryption strength, and the app says so where it is set up.** The shared secret lives inside the encrypted workspace, so it can only be checked after the passphrase has already decrypted it. It stops someone who has watched or guessed the passphrase from opening the workspace in this browser; it does not stop someone holding both a backup file and the passphrase. The passphrase protects the data key at rest; a registered passkey would provide another way to unwrap that same key, but its browser UI is not yet available.
 - While a second factor is outstanding the decrypted workspace is held out of the UI entirely: nothing is rendered and no record is reachable until a code or recovery code is accepted. Locking, or pressing "start again", discards it.
 - Recovery codes are 8 random base32 codes shown exactly once. Only salted SHA-256 hashes are stored. A used code is removed and the workspace re-sealed **before** it opens, so an interrupted unlock cannot leave a code reusable. Comparison is case- and separator-insensitive so a code can be typed as it was written down.
 - Turning two-factor off clears the secret and every recovery hash.
-- **Never touch the network** blocks the reference exchange-rate request, which is the only outbound request the application can make, and clears any cached quote. With it on, nothing leaves the browser.
+- In the public build, **Never touch the network** blocks the optional reference exchange-rate request and clears any cached quote. If a Hisaab service is configured in a future build, each service request needs its own consent and offline-control review before release.
 - **Hide amounts** blurs figures on Home. It is a shoulder-surfing convenience, not a security control: the values are present in the DOM.
 - Auto-lock is configurable at 1, 5, 15 or 30 minutes and is stored inside the encrypted workspace. Page-hide and other-tab locking are unchanged.
 

@@ -184,9 +184,12 @@ test('a malformed or oversized body is handled without a stack trace', async () 
  const store=memoryStore();
  const bad=await call(store,'/v1/usage',{method:'POST',body:'{not json',headers:{'content-type':'application/json'}});
  assert.equal(bad.status,400);
- const huge=await call(store,'/v1/usage',{method:'POST',body:JSON.stringify({day:'x'.repeat(5000)}),
+ const huge=await call(store,'/v1/usage',{method:'POST',body:JSON.stringify({day:'x'.repeat(9000)}),
   headers:{'content-type':'application/json'}});
- assert.equal(huge.status,500);
- assert.match((await huge.json() as {error:string}).error,/went wrong/);
+ // An oversized body is its own answer now, not a generic failure: 413 with a
+ // message that says what to do. It used to fall through to the 500 handler,
+ // which told the caller nothing and looked like a server fault.
+ assert.equal(huge.status,413);
+ assert.match((await huge.json() as {error:string}).error,/larger than this endpoint accepts/);
  assert.ok(!(await bad.text()).includes('SyntaxError'));
 });

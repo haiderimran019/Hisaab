@@ -16,7 +16,8 @@ const licence=(over:Record<string,unknown>={})=>{
 };
 const today='2026-10-21';
 const env:Env={DB:null,ALLOWED_ORIGIN:'https://app.test',RATE_SECRET:'s',ADMIN_TOKEN:'a',
- LICENCE_PUBLIC_KEY:publicJwk,MODEL_PROVIDER:'gemini',MODEL_NAME:'test-model',MODEL_KEY:'k'};
+ LICENCE_PUBLIC_KEY:publicJwk,MODEL_PROVIDER:'gemini',MODEL_NAME:'test-model',MODEL_KEY:'k',
+ READER_NAME:'Test Reader'};
 const FILE=Buffer.from('%PDF-1.4 pretend').toString('base64');
 const post=(e:Env,body:unknown)=>handle(new Request('https://api.test/v1/extract',{method:'POST',
  headers:{origin:'https://app.test','content-type':'application/json','cf-connecting-ip':'1.1.1.1'},

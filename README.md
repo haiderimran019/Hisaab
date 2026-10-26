@@ -2,7 +2,7 @@
 
 **Your work. Your worth.** Finance for independent workers in Pakistan.
 
-Invoices, multi-currency income, actual PKR settlement after fees, expense evidence and source-linked Pakistani tax estimates, in a private encrypted workspace. Built with TypeScript, Vite, Decimal.js, Zod and WebCrypto. Poppins typography, light by default with a dark theme that follows your device, and a palette that keeps brand green and alarm amber apart — see [DESIGN.md](DESIGN.md).
+Invoices, multi-currency income, actual PKR settlement after fees, expense evidence and source-linked Pakistani tax estimates, in a private encrypted workspace. Built with TypeScript, Vite, Decimal.js, Zod and WebCrypto. Poppins typography, light by default with a dark theme that follows your device, and a soft indigo interface palette — see [DESIGN.md](DESIGN.md).
 
 ![Hisaab desktop demo](docs/screenshots/desktop.jpg)
 
@@ -73,26 +73,22 @@ Sold as an annual licence key — Easypaisa, JazzCash, Raast and bank transfer a
 - **FX:** transparent settlement calculator plus opt-in, dated ExchangeRate-API reference quotes. Provider fees are entered, never invented. Reference FX is not historical FX or an executable bank offer.
 - **Pakistan tax center:** TY2026/TY2027, 154A export scenarios (PSEB IT/ITeS and other services), domestic individual-business slabs and surcharge, separate withholding credits, statutory eligibility gates, provincial/special-regime review flags and official FBR source links.
 - **Reports:** income/expense CSVs, source-linked tax worksheet JSON, printable worksheet, monthly reconciliation and filing checklist. Exports are for accountant review, not an IRIS import or submission.
-- **Privacy and security:** AES-256-GCM encrypted local storage, PBKDF2 at 600,000 iterations, non-extractable in-memory key, encrypted backup/restore and explicit local deletion. **Two-factor codes on unlock** from any authenticator app (offline — no phone number, no email address), **8 single-use recovery codes** stored only as hashes, **Never touch the network** to switch off the one outside request the app can make, **hide amounts** for working in public, and auto-lock at 1/5/15/30 minutes plus lock on tab hide. A [privacy notice](docs/PRIVACY.md) written to be read, inside the app and in the repository from the same source.
+- **Privacy and security:** AES-256-GCM encrypted local storage under a random workspace key, wrapped by a key derived from the passphrase with PBKDF2 at 600,000 iterations; encrypted backup/restore and explicit local deletion. **Two-factor codes on unlock** from any authenticator app (offline — no phone number, no email address), **8 single-use recovery codes** stored only as hashes, **Never touch the network** for the optional requests available in the public build, **hide amounts** for working in public, and auto-lock at 1/5/15/30 minutes plus lock on tab hide. A [privacy notice](docs/PRIVACY.md) written to be read, inside the app and in the repository from the same source.
 - **Practitioner review tick:** a reviewer signs a certificate bound to your pack's fingerprint; the pack prints a verified tick with their name, registration and date. Change one figure and the tick turns amber by itself. No reviewer is published with this release, so no tick can be shown yet — not even by us.
 - **Responsive UI:** desktop side navigation, mobile bottom navigation, keyboard focus, reduced-motion support and labelled controls. Fonts are self-hosted.
 
 ## The service (optional, and off by default)
 
-`server/` is a small Cloudflare Worker that does exactly two things and refuses a
-third.
+`server/` is optional Cloudflare Worker code for consented email subscriptions,
+usage counts, a sales ledger and key re-delivery, practitioner review requests,
+and document transcription. The licence portal and review routes are backend
+groundwork; this public app has no portal or review-request screen.
 
-**It does:** hold email addresses people actively gave us — double opt-in,
-one-click unsubscribe — so licence keys and occasional updates can be sent; and
-count how often the app is opened.
-
-**It refuses:** anything financial. There is no endpoint, no accepted field and no
-database column for an amount, a client name, a statement row, a tax figure, or
-any identifier for a device or person. Every endpoint declares the exact fields it
-accepts and **rejects a body carrying anything else**, so a careless change on the
-client cannot start leaking records by accident. A test fires realistic payloads
-(`income`, `client`, `receipts`, `taxDue`, `lines`, `installId`) at it and asserts
-each one is refused.
+**It refuses customer financial records.** There is no endpoint or database
+column for a customer's income, client, statement row or tax figure. The sales
+ledger does record what a customer paid *Hisaab*. Every POST body has an
+allow-list of fields; tests send realistic financial payloads to every POST
+route and assert that they are refused.
 
 Usage counting sends **no identifier at all** — a date, a build string and a plan
 word — so the figures are *opens, not people*, and `/v1/stats` says so in its own
@@ -151,7 +147,7 @@ The public app has no shared financial-data backend and does not expose another 
 
 ## Release status
 
-This is a functional **local-first product with a working paid mechanism**, not a commercially certified tax service. Statement import, reconciliation, the Filing Pack and offline licence keys are implemented and tested. Account sync, bank OAuth or statement APIs, PDF and OCR extraction, shared accountant workspaces, card subscriptions, and professional tax or security approval are **not** implemented.
+This is a functional **local-first product with a working paid mechanism**, not a commercially certified tax service. Statement import, reconciliation, the Filing Pack and offline licence keys are implemented and tested. PDF transcription code exists but is disabled in the public build and has not been verified with a real reader. Account sync, bank OAuth or statement APIs, a customer-facing licence portal, a practitioner review-request screen, shared accountant workspaces, card subscriptions, and professional tax or security approval are **not** implemented.
 
 Before money changes hands, four things that are not code must exist: a qualified Pakistani practitioner's written review of the tax rules and the Filing Pack's wording; published terms, privacy notice and refund policy; real payment details in `src/pricing.ts` (deliberately left empty) with a sales ledger; and a process for correcting and reissuing if a rule turns out to be wrong. [docs/COMMERCIAL.md](docs/COMMERCIAL.md) sets out the evidence plan and the thresholds at which this concept should be narrowed or dropped. The [plan](docs/PLAN.md) contains the commercial roadmap. See [verification evidence](docs/VERIFICATION.md) for checks actually run and remaining validation limits.
 
