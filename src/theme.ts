@@ -9,14 +9,14 @@ const KEY='hisaab.theme';
 export function storedTheme():Theme{
  try{
   const value=localStorage.getItem(KEY);
-  return value==='light'||value==='dark'?value:'system';
- }catch{return 'system';}
+  return value==='light'||value==='dark'||value==='system'?value:'light';
+ }catch{return 'light';}
 }
 export function applyTheme(theme:Theme){
  const root=document.documentElement;
  if(theme==='system')root.removeAttribute('data-theme');
  else root.setAttribute('data-theme',theme);
- try{theme==='system'?localStorage.removeItem(KEY):localStorage.setItem(KEY,theme);}catch{/* storage blocked: this session only */}
+ try{localStorage.setItem(KEY,theme);}catch{/* storage blocked: this session only */}
 }
 /** Called once at start-up, before the first paint, to avoid a flash. */
 export const initTheme=()=>applyTheme(storedTheme());

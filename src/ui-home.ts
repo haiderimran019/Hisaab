@@ -59,7 +59,7 @@ export function steps(ctx:Ctx):Step[]{
  return list.map((s,i)=>({...s,current:i===firstOpen}));
 }
 
-export function homeView(ctx:Ctx,estimated:{reserve:number;balance:number;reasons:string[]}){
+export function homeView(ctx:Ctx,estimated:{reserve:number;balance:number;reasons:string[];itBase:number;itRate:number},chartMarkup=''){
  const {workspace:w,year}=ctx;
  const rows=w.receipts.filter(r=>inYear(r.date,year));
  const gross=sum(rows.map(r=>receiptMath(r).gross));
@@ -71,35 +71,59 @@ export function homeView(ctx:Ctx,estimated:{reserve:number;balance:number;reason
  const blur=w.security.blurAmounts?' blurred':'';
  const money=(v:number)=>`<b class="figure${blur}">${h(pkr(v))}</b>`;
  const unpaid=w.invoices.filter(i=>i.status==='Sent');
+ const psebTax=estimated.itBase*.0025;
+ const standardTax=estimated.itBase*.01;
+ const hasExportBase=estimated.itBase>0;
 
- return `<section class="hero">
+ return `<div class="home-dashboard"><div class="overview-stage">
+ <section class="hero" aria-labelledby="reserve-heading">
   <div class="hero-main">
-   <p class="hero-eyebrow">Tax year ${year} · 1 July ${year-1} to 30 June ${year}</p>
-   <h2>${now?h(now.title):'You are ready to file'}</h2>
-   <p class="hero-blurb">${now?h(now.blurb):'Every line is decided, every account balances, and your Filing Pack is ready to print.'}</p>
-   ${now?.action?`<button class="btn primary big" ${now.action.act?`data-action="${now.action.act}"`:`data-page="${now.action.page}"`}>${h(now.action.label)} ${icon('arrow-right')}</button>`
-    :`<button class="btn primary big" data-page="Reports">Make the pack ${icon('arrow-right')}</button>`}
+   <div class="hero-topline"><span>${icon('shield-check')} Federal tax estimate</span><span>TY${year}</span></div>
+   <h2 id="reserve-heading">Know what to set aside.</h2>
+   <p class="hero-blurb">A working reserve from your recorded income and declared tax profile. Review the open questions before relying on it.</p>
+   <div class="hero-amount"><span>Modeled reserve</span>${money(estimated.reserve)}</div>
+   <div class="hero-actions"><button class="btn hero-button" data-page="Tax">Explore tax picture ${icon('arrow-right')}</button><span>${estimated.reasons.length?`${estimated.reasons.length} check${estimated.reasons.length===1?'':'s'} need review`:'Based on confirmed inputs'}</span></div>
   </div>
-  <div class="hero-progress">
-   <div class="rail" role="img" aria-label="${doneCount} of ${list.length} steps done">
-    ${list.map(s=>`<i class="${s.done?'on':''}"></i>`).join('')}
-   </div>
-   <p><b>${doneCount} of ${list.length}</b> steps done</p>
+  <div class="hero-sheet">
+   <div class="hero-sheet-head"><span>IN YOUR WORKSPACE</span>${icon('file-text')}</div>
+   <div><span>IT export tax base</span><strong>${h(pkr(estimated.itBase))}</strong></div>
+   <div><span>Rate modeled</span><strong>${estimated.itRate}%</strong></div>
+   <div class="hero-sheet-foot"><span class="hero-sheet-dot"></span>${w.profile.pseb?'PSEB status declared':'PSEB concession unconfirmed'}</div>
   </div>
  </section>
+ <aside class="next-card" aria-labelledby="next-heading">
+  <div class="next-card-head"><span class="next-icon">${icon('sparkles')}</span><span>${doneCount} of ${list.length} steps complete</span></div>
+  <h2 id="next-heading">${now?h(now.title):'Your pack is ready'}</h2>
+  <p>${now?h(now.blurb):'Every line is decided and your records are ready for a Filing Pack.'}</p>
+  <div class="rail" role="img" aria-label="${doneCount} of ${list.length} steps done">${list.map(s=>`<i class="${s.done?'on':''}"></i>`).join('')}</div>
+  ${now?.action?`<button class="next-action" ${now.action.act?`data-action="${now.action.act}"`:`data-page="${now.action.page}"`}>${h(now.action.label)} ${icon('arrow-up-right')}</button>`
+    :`<button class="next-action" data-page="Pack">Open Filing Pack ${icon('arrow-up-right')}</button>`}
+ </aside></div>
 
  <div class="money-row">
-  <div class="money-card"><span>${icon('arrow-down-left')}What reached you</span>${money(net)}
+  <div class="money-card money-in"><span>${icon('arrow-down-left')}What reached you</span>${money(net)}
    <small>After the processor's cut and bank charges${w.security.blurAmounts?'':`, from ${rows.length} payment${rows.length===1?'':'s'}`}</small></div>
-  <div class="money-card"><span>${icon('arrow-up-right')}Lost to fees</span>${money(fees)}
+  <div class="money-card money-fees"><span>${icon('arrow-up-right')}Processing fees</span>${money(fees)}
    <small>${gross>0?`${(fees/gross*100).toFixed(1)}% of what clients paid`:'Nothing recorded yet'}</small></div>
-  <div class="money-card accent"><span>${icon('landmark')}Keep aside for tax</span>${money(estimated.reserve)}
-   <small>${estimated.reasons.length?'An estimate with open questions — see Tax':`Still to pay: ${pkr(estimated.balance)}`}</small></div>
+  <div class="money-card accent"><span>${icon('landmark')}Still to set aside</span>${money(estimated.balance)}
+   <small>${estimated.reasons.length?'Modeled difference; open checks remain':'Additional modeled reserve'}</small></div>
  </div>
 
+ <div class="insight-grid">
+  ${chartMarkup}
+  <section class="panel tax-compare" aria-labelledby="compare-heading">
+   <div class="panel-head"><div><h2 id="compare-heading">The PSEB difference</h2><p>Two modeled rates on the same IT export tax base.</p></div>${icon('arrow-up-right')}</div>
+   ${hasExportBase?`<div class="compare-body">
+    <div class="compare-row"><div><span>With valid PSEB certification</span><b>${h(pkr(psebTax))}</b></div><div class="compare-track"><i class="compare-pseb"></i></div><small>0.25% of confirmed IT export base</small></div>
+    <div class="compare-row"><div><span>Other covered service rate</span><b>${h(pkr(standardTax))}</b></div><div class="compare-track"><i class="compare-other"></i></div><small>1% of the same base, if applicable</small></div>
+    <div class="compare-note">${icon('circle-help')}Rate eligibility is not verified from a payment route. Your PSEB status and section 154A conditions need evidence.</div>
+   </div>`:`<div class="compare-empty"><p>Add bank-confirmed IT export receipts to see how the two rates compare.</p><button class="text-link" data-page="Money">Go to Money ${icon('arrow-right')}</button></div>`}
+  </section>
+ </div></div>
+
  <section class="panel steps-panel">
-  <div class="panel-head"><div><h2>Your tax year, step by step</h2>
-   <p>Work down the list. You can stop anywhere and come back — nothing is submitted to anyone.</p></div></div>
+  <div class="panel-head"><div><h2>From statement to Filing Pack</h2>
+   <p>Six clear steps. Your work is saved locally as you go.</p></div><span class="step-progress">${doneCount} / ${list.length} done</span></div>
   <ol class="steps">
    ${list.map((s,i)=>`<li class="step ${s.done?'done':s.current?'now':'later'}">
     <span class="step-mark">${s.done?icon('check'):i+1}</span>
