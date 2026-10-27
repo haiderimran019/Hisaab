@@ -8,7 +8,13 @@ import {REVIEWERS} from './review';
 import {serviceConfigured,pingEnabled} from './service';
 import {storedTheme,THEMES} from './theme';
 
-export type SecurityCtx={workspace:Workspace;review:ReviewStatus;twoFactorDraft:TwoFactorDraft|null;demo:boolean};
+export type SecurityCtx={workspace:Workspace;review:ReviewStatus;twoFactorDraft:TwoFactorDraft|null;demo:boolean;
+ /** The passkeys registered against this workspace's encryption key. Read from
+     the envelope, not from the records: these are unlock slots, not settings. */
+ passkeys:{credentialId:string;label:string;addedOn:string}[];
+ /** Whether this device has a platform authenticator at all. False hides the
+     control rather than offering something that will fail. */
+ passkeyCapable:boolean};
 export type TwoFactorDraft={secret:string;uri:string;codes:string[];confirmed:boolean};
 
 export function securityPanel(ctx:SecurityCtx){
@@ -33,6 +39,15 @@ export function securityPanel(ctx:SecurityCtx){
      :s.twoFactor?`<button class="btn ghost" data-action="disable-2fa">Turn off</button>`
      :`<button class="btn secondary" data-action="setup-2fa">Set up</button>`}
    </div>
+
+   ${ctx.passkeyCapable?`<div class="control">
+    <div><b>Unlock with Face ID, Touch ID or Windows Hello</b>
+     <p>Registers a passkey on this device that opens the workspace without typing your passphrase. The key is held in this device's secure hardware and never leaves it — Hisaab has no account for it to sign in to.</p>
+     ${ctx.passkeys.length?`<ul class="passkey-list">${ctx.passkeys.map(k=>`<li><span>${icon('lock-keyhole')}${h(k.label)} <span class="muted small">added ${h(k.addedOn.slice(0,10))}</span></span><button class="btn tiny ghost" data-remove-passkey="${h(k.credentialId)}">Remove</button></li>`).join('')}</ul>`:''}
+     <p class="muted small"><b>Your passphrase always still works, and cannot be removed.</b> A passkey lives in one device. If it were the only way in, a dropped phone would destroy the only copy of your books — so this is a faster door, not a replacement lock. Keep your passphrase written down somewhere safe.</p></div>
+    ${ctx.demo?'<span class="control-note">Create a private workspace to use this</span>'
+     :`<button class="btn secondary" data-action="add-passkey">${icon('shield-check')}${ctx.passkeys.length?'Add another':'Register'}</button>`}
+   </div>`:''}
 
    <div class="control">
     <div><b>Lock by itself after</b>
@@ -151,7 +166,7 @@ export function privacyNotice(configured=serviceConfigured()){
   <ol>
    <li><b>Reference exchange rates</b>, only when you press the button for them: your browser asks <code>open.er-api.com</code> for published rates. No financial data is sent, but like any web request the provider necessarily sees your IP address and the time you asked. <b>Never touch the network</b> in Privacy and security stops even this.</li>
    ${configured?`<li><b>A usage ping</b>, once a day, <b>only if you switch it on</b> — it is off until you do. It carries the date, which build you are running, and whether a licence is active. <b>No identifier of any kind is sent</b>, so we can count how often Hisaab is opened but can never tell one person from another, or link two days together.</li>
-   <li><b>Your email address</b>, only if you type it into the key form and press the button. It is used to send your licence key and occasional product news. We never sell it, one click unsubscribes, and it is never connected to anything financial because we hold nothing financial. You do not need to give one at all — a key can reach you any way you like.</li>
+   <li><b>Your email address</b>, only if you type it into the key form and press the button. It is used to send your licence key, filing-deadline reminders and occasional product news. We never sell it, one click unsubscribes, and it is never connected to anything financial because we hold nothing financial. You do not need to give one at all — a key can reach you any way you like.</li>
    <li><b>A statement you choose to have read</b>, only when you pick a PDF or photo and confirm the warning on that screen. The file and your licence key go to the reading service named in the dialog. The file is used to transcribe proposed rows and is not stored by us; a per-licence counter records the request. You check and confirm the returned rows. Everything about this is off unless you start it, and CSV import never involves it.</li>`:''}
   </ol>
   <p>Fonts and icons are served from the app itself. There are no trackers, no advertising pixels, no cookies and no third-party scripts of any kind.${configured?'':' This build has no usage counting and no sign-up form, because no Hisaab service is configured in it.'}</p>
@@ -162,6 +177,7 @@ export function privacyNotice(configured=serviceConfigured()){
   <p>If you buy a licence, we learn what you tell us when you pay: the name to put on the key, the email address to send it to, and whatever your payment method shows us. We keep that in our own sales ledger — name, email, plan, what you paid, the date and the expiry — so we can honour renewals and refunds. Alongside it we may hold a portal sign-in session, and a review job if you asked for one.</p>
   <p>Normal app use verifies your key on your device against a signature, so it keeps working offline. If you choose optional document reading, that request sends the key to the Worker for entitlement and quota checks.</p>
   <p><b>With one exception, which we would rather state than let you discover.</b> If you request optional document reading, we count the request against its annual allowance before contacting the reader. We keep a single number per licence per tax year: how many requests it made. That number tells us a licence was used and roughly how often — not what was in any document, not when, and nothing about your figures. It is the only record of use that exists, and if you never request a document read, it never exists for you.</p>
+  <p><b>Filing reminders, if you confirmed an address.</b> Before a statutory deadline the service emails the date. To avoid sending it twice it records one row per address per deadline: your address, the tax year and which reminder it was. There is no figure in that row and none in the message, because the service has never seen one — it does not know whether you have filed, what you earned, or whether an obligation applies to you, and the email says so. Only deadlines every filer has are ever emailed. Unsubscribing stops them, and erasure deletes those rows with the rest.</p>
   <p>Two things this means in practice, and they cut both ways. We cannot revoke a key, because nothing we hold can reach your device — a refund returns your money and marks our ledger, and your software keeps working. And we cannot restore your workspace, because we have never had a copy of it.</p>
 
   <h3>What you are responsible for</h3>

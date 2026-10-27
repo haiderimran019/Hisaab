@@ -52,3 +52,10 @@ export const sendLicenceKey=(env:Env,email:string,name:string,plan:string,key:st
  `Paste it into Settings in Hisaab. It is checked on your own device, so the app `+
  `never phones home and works offline.\n\n`+
  `Keep this email: you can also fetch the key again from the licence page at any time.`+FOOTER);
+
+/** A filing deadline. The subject carries the date so it is useful from the
+    notification alone, and the body is built in reminders.ts, which is where
+    the reasoning about what may and may not be said lives. */
+export const sendFilingReminder=(env:Env,email:string,
+ m:{label:string;taxYear:number;dueOn:string},text:string)=>send(env,email,
+ `${m.label} for tax year ${m.taxYear} is due ${m.dueOn}`,text+FOOTER);

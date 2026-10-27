@@ -55,7 +55,7 @@ export const fieldLabels:Record<FieldName,string>={
  amount:'Signed amount (one column)',debit:'Debit / withdrawal',credit:'Credit / deposit',
  drcr:'Debit-or-credit marker',balance:'Balance after transaction'
 };
-const hints:Record<FieldName,string[]>={
+export const hints:Record<FieldName,string[]>={
  date:['value date','transaction date','date','posting date','trans date','txn date','paid on'],
  description:['description','particulars','narration','details','detail','remarks','reference','transaction details','memo'],
  counterparty:['counterparty','payer','payee','client','beneficiary','sender','merchant','name','to / from'],

@@ -12,7 +12,8 @@
    What the tick is NOT: it is not a government endorsement, not FBR approval, and
    not proof that the reviewer is registered — only that a holder of the reviewing
    key said so. Hisaab verifies the signature, not the credential behind it. */
-import type {Workspace} from './core';
+import {RULE_VERSION,type Workspace} from './core';
+import {IRIS_MAP_VERSION} from './iris';
 
 /** Reviewer keys the app will accept. Each is added deliberately, per release. */
 export type Reviewer={id:string;name:string;registration:string;publicKey:JsonWebKey};
@@ -44,6 +45,13 @@ export function packDigestInput(w:Workspace,year:number){
   rows.map(r=>keys.map(k=>String(r[k]??'')).join('\u001f'));
  return JSON.stringify({
   taxYear:year,
+  /* The versions the figures were produced under. A reviewer signs off numbers
+     computed by a particular set of rules and placed by a particular field map;
+     if either changes, the figures may have moved even though every record the
+     customer typed is identical. Including them means the tick goes amber on a
+     rule change instead of silently covering a different calculation. */
+  ruleVersion:RULE_VERSION,
+  irisMapVersion:IRIS_MAP_VERSION,
   profile:w.profile,
   receipts:pick(w.receipts.filter(r=>inYear(r.date)).slice().sort((a,b)=>a.id<b.id?-1:1),
    ['date','client','currency','gross','fee','rate','bankFee','withheld','category','taxBase','baseConfirmed','banking','evidence']),

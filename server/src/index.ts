@@ -20,6 +20,7 @@ import {json,preflight,corsOrigin} from './http';
 import {bearer} from './auth';
 import {buildTable,methodsFor,type Ctx,type Route} from './routes';
 import {d1Store,type Store} from './store';
+import {runReminders} from './reminders';
 import type {Env} from './env';
 import {coreRoutes} from './routes/core';
 import {portalRoutes} from './routes/portal';
@@ -113,6 +114,29 @@ function constantEquals(a:string,b:string){
  return diff===0;
 }
 
+/* The cron. wrangler.toml fires this once a day; reminders.ts decides whether
+   anything falls due on the day it runs, so firing on a day with no milestone
+   costs one query and sends nothing.
+
+   Errors are logged and swallowed on purpose: a scheduled handler that throws
+   gets retried by the platform, and a retry after a partial send is only safe
+   because reminder_log makes it so. Logging the reason is what tells us a run
+   failed at all, since nobody is watching a response code. */
+export async function scheduled(event:{scheduledTime:number},env:Env,store:Store){
+ const day=new Date(event.scheduledTime).toISOString().slice(0,10);
+ try{
+  const result=await runReminders(env,store,day);
+  if(result.milestones.length)
+   console.log('hisaab-reminders',JSON.stringify({day,sent:result.sent,
+    skipped:result.skipped,failed:result.failed,reason:result.reason}));
+  return result;
+ }catch(e){
+  console.error('hisaab-reminders-failed',day,e instanceof Error?e.message:e);
+  return null;
+ }
+}
+
 export default {
- fetch(request:Request,env:Env){return handle(request,env,d1Store(env.DB));}
+ fetch(request:Request,env:Env){return handle(request,env,d1Store(env.DB));},
+ scheduled(event:{scheduledTime:number},env:Env){return scheduled(event,env,d1Store(env.DB));}
 };

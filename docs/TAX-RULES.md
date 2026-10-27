@@ -44,4 +44,14 @@ Entered Pakistan tax paid is tracked by regime/year. The additional modeled rese
 - Super tax section 4C and turnover/minimum tax section 113: high-income/turnover cases at PKR 100m are conservatively gated; no super-tax result is fabricated.
 - Advance tax section 147 schedules, penalties/default surcharge, charitable/pension credits, personal Zakat allowances, depreciation, prior-year losses and wealth-statement section 116 reconciliation are not calculated. No official filing deadline is assumed because extensions change.
 
+**On deadlines, to be exact about the line above.** `src/deadlines.ts` holds the
+statutory dates and counts down to them, and the service emails a reminder
+before the universal ones. That is not a contradiction of this section: no date
+in that file enters any calculation here. Nothing is pro-rated by it, no penalty
+is estimated from it, and no figure changes if a deadline passes or FBR extends
+it. The dates are shown so a filer knows when to act; the arithmetic never reads
+them. s.147 advance-tax instalments carry a date but are marked non-universal
+and are never emailed, because whether they apply depends on a last assessed
+liability Hisaab does not evaluate.
+
 The filing package is a review worksheet, ledger and checklist. It is not an official FBR form, an IRIS import or a claim that taxes have been filed. Professional review remains outstanding. Changes in law require a new rule version and boundary tests before adding support for later years.

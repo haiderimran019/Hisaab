@@ -57,3 +57,10 @@ database_id = "<run: wrangler d1 create hisaab, then paste the id here>"
 #   wrangler secret put ADMIN_TOKEN     # a long random string you keep
 #   wrangler secret put RESEND_KEY      # optional, only to send mail
 #   wrangler secret put MODEL_KEY       # optional, only to read documents
+
+# Filing reminders. Daily at 03:00 UTC (08:00 Pakistan), because a reminder that
+# arrives at breakfast gets read. reminders.ts decides whether anything is due,
+# so most days this costs one query and sends nothing. Remove this block and the
+# service still works — no reminders go out, and nothing else changes.
+[triggers]
+crons = ["0 3 * * *"]

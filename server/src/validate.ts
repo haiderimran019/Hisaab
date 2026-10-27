@@ -266,3 +266,16 @@ export function readQuotaRequest(body:unknown):Result<{licence:string}>{
  if(typeof licence!=='string'||!licence)return err(402,'That needs your licence key.');
  return ok({licence});
 }
+
+/** Running the reminder cron by hand. Two switches and nothing else: there is
+    no field here for a recipient, a figure or a message, so an admin token
+    cannot be used to mail somebody something of their own devising. */
+export function readReminderRun(body:unknown):Result<{dryRun:boolean;day:string}>{
+ const checked=onlyKeys(body,['dryRun','day']);
+ if(!checked.ok)return checked;
+ const {dryRun,day}=checked.value;
+ if(dryRun!==undefined&&typeof dryRun!=='boolean')return err(400,'dryRun must be true or false.');
+ if(day!==undefined&&(typeof day!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(day)))
+  return err(400,'day must be YYYY-MM-DD.');
+ return ok({dryRun:dryRun!==false,day:typeof day==='string'?day:''});
+}

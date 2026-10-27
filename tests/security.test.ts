@@ -6,7 +6,8 @@ import {randomSecret,base32Encode,base32Decode,totpCode,verifyCode,otpauthUri,fo
 import {checkReview,packDigest,packDigestInput,CERT_PREFIX,type Reviewer} from '../src/review.ts';
 import {filingPack} from '../src/pack.ts';
 import {demo} from '../src/demo.ts';
-import {workspaceSchema} from '../src/core.ts';
+import {workspaceSchema,RULE_VERSION} from '../src/core.ts';
+import {IRIS_MAP_VERSION} from '../src/iris.ts';
 
 /* ── Authenticator codes ─────────────────────────────────────────────────── */
 
@@ -185,6 +186,16 @@ test('the fingerprint covers every figure, declaration and the name on the pack'
  // Record order must not matter: a reviewer signs the content, not the array order.
  assert.equal(await packDigest({...w,receipts:[...w.receipts].reverse()},2027),before);
  assert.ok(packDigestInput(w,2027).length>100);
+});
+
+test('a certificate is bound to the rules and the field map that produced the figures', () => {
+ const input=JSON.parse(packDigestInput(demo(),2027)) as
+  {ruleVersion:string;irisMapVersion:string};
+ // Ship a rule change or a transcribed IRIS code and every existing tick goes
+ // amber, because the same records may now produce different figures or land in
+ // a different box. A tick that outlives the rules it was given under is a lie.
+ assert.equal(input.ruleVersion,RULE_VERSION);
+ assert.equal(input.irisMapVersion,IRIS_MAP_VERSION);
 });
 
 test('a reviewed pack says who reviewed it, and an unreviewed one says it is not reviewed', async () => {

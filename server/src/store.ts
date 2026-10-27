@@ -75,6 +75,12 @@ export type Store={
  jobsForReviewer(reviewerId:string,limit:number):Promise<ReviewJob[]>;
  updateReviewJob(id:string,patch:{status?:ReviewJob['status'];signature?:string},at:string):Promise<boolean>;
 
+ /* ---- filing reminders ---- */
+ /** False when this person has already had this reminder, so a cron that
+     fires twice cannot send it twice. */
+ recordReminder(email:string,taxYear:string,milestone:string,at:string):Promise<boolean>;
+ countReminders(taxYear:string,milestone:string):Promise<number>;
+
  /* ---- erasure ---- */
  eraseEmail(email:string,emailHash:string,scope:'subscriber'|'licence'|'all',at:string):Promise<{subscribers:number;licences:number}>;
  findErasure(emailHash:string):Promise<{erasedAt:string;scope:string}|null>;
@@ -86,6 +92,7 @@ export function memoryStore():Store{
  const rates=new Map<string,{day:string;count:number}>();
  const licences=new Map<string,Licence>();
  const authTokens=new Map<string,AuthToken>();
+ const reminders=new Set<string>();
  const sessions=new Map<string,Session>();
  const quota=new Map<string,number>();
  const reviewers=new Map<string,Reviewer>();
@@ -188,6 +195,13 @@ export function memoryStore():Store{
     updatedAt:at});
    return true;},
 
+  async recordReminder(email,taxYear,milestone){
+   const key=`${email}|${taxYear}|${milestone}`;
+   if(reminders.has(key))return false;
+   reminders.add(key);return true;},
+  async countReminders(taxYear,milestone){
+   return [...reminders].filter(k=>k.endsWith(`|${taxYear}|${milestone}`)).length;},
+
   async eraseEmail(email,emailHash,scope,at){
    let removedSubs=0,removedLicences=0;
    if(scope==='subscriber'||scope==='all'){
@@ -197,7 +211,8 @@ export function memoryStore():Store{
    if(scope==='all'){
     for(const [k,v] of sessions)if(v.email===email)sessions.delete(k);
     for(const [k,v] of authTokens)if(v.email===email)authTokens.delete(k);
-    for(const [k,v] of jobs)if(v.customerEmail===email)jobs.delete(k);}
+    for(const [k,v] of jobs)if(v.customerEmail===email)jobs.delete(k);
+    for(const k of [...reminders])if(k.startsWith(`${email}|`))reminders.delete(k);}
    erasures.set(emailHash,{erasedAt:at,scope});
    return {subscribers:removedSubs,licences:removedLicences};},
   async findErasure(emailHash){const found=erasures.get(emailHash);return found?{...found}:null;}
@@ -357,6 +372,18 @@ export function d1Store(db:D1):Store{
     .bind(patch.status??null,patch.signature??null,at,id).run();
    return (result.meta?.changes??0)>0;},
 
+  async recordReminder(email,taxYear,milestone,at){
+   // The primary key does the work: a duplicate insert changes no rows, so the
+   // caller learns it has already been sent without a read-then-write race.
+   const r=await db.prepare(`insert into reminder_log (email,tax_year,milestone,sent_at)
+    values (?,?,?,?) on conflict(email,tax_year,milestone) do nothing`)
+    .bind(email,taxYear,milestone,at).run();
+   return (r.meta?.changes??0)>0;},
+  async countReminders(taxYear,milestone){
+   const row=await db.prepare('select count(*) as n from reminder_log where tax_year = ? and milestone = ?')
+    .bind(taxYear,milestone).first();
+   return Number(row?.n??0);},
+
   async eraseEmail(email,emailHash,scope,at){
    let subscribers=0,licencesRemoved=0;
    if(scope==='subscriber'||scope==='all'){
@@ -368,7 +395,8 @@ export function d1Store(db:D1):Store{
    if(scope==='all'){
     await db.prepare('delete from sessions where email = ?').bind(email).run();
     await db.prepare('delete from auth_tokens where email = ?').bind(email).run();
-    await db.prepare('delete from review_jobs where customer_email = ?').bind(email).run();}
+    await db.prepare('delete from review_jobs where customer_email = ?').bind(email).run();
+    await db.prepare('delete from reminder_log where email = ?').bind(email).run();}
    await db.prepare(`insert into erasures (email_hash,erased_at,scope) values (?,?,?)
     on conflict(email_hash) do update set erased_at = excluded.erased_at, scope = excluded.scope`)
     .bind(emailHash,at,scope).run();

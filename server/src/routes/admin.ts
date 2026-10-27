@@ -10,9 +10,10 @@
    An admin token is not a reason to relax the allow-list. Every body here still
    goes through a reader in validate.ts, so the service remains incapable of
    accepting a figure from anybody's books. */
-import {readIssue,readReviewer,readLicenceStatus,readReviewerStatus,cleanEmail} from '../validate';
+import {readIssue,readReviewer,readLicenceStatus,readReviewerStatus,readReminderRun,cleanEmail} from '../validate';
 import {json,fail,readJson} from '../http';
 import {sendLicenceKey} from '../mail';
+import {runReminders,due} from '../reminders';
 import type {Route} from '../routes';
 
 /** Calendar years, so a key bought on 3 March runs to 3 March. */
@@ -124,5 +125,35 @@ export const allReviewers:Route={
  }
 };
 
+/* The reminder run, by hand. The cron in wrangler.toml calls the same function
+   through scheduled() in index.ts; this exists so a run can be inspected before
+   it is trusted, and so a missed cron can be caught up deliberately.
+
+   It defaults to a dry run. Sending email to every confirmed address is not
+   something a mistyped curl should do, so the caller has to ask for it with
+   dryRun:false. */
+export const reminders:Route={
+ method:'POST',path:'/v1/admin/reminders',auth:'admin',
+ async handle({request,env,store,origin,day}){
+  const body=readReminderRun(await readJson(request));
+  if(!body.ok)return fail(body,origin);
+  const on=body.value.day||day;
+  const result=await runReminders(env,store,on,{dryRun:body.value.dryRun});
+  return json(result,200,origin);
+ }
+};
+
+/** What is coming, without running anything. Useful for checking the cron is
+    pointed at a day that actually has a milestone on it. */
+export const reminderSchedule:Route={
+ method:'GET',path:'/v1/admin/reminders',auth:'admin',
+ async handle({url,store,origin,day}){
+  const on=/^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get('day')??'')
+   ? url.searchParams.get('day')! : day;
+  return json({day:on,due:due(on),
+   confirmedAddresses:(await store.countSubscribers()).confirmed},200,origin);
+ }
+};
+
 export const adminRoutes=[subscribers,purge,issue,lookup,licenceStatus,
- addReviewer,reviewerStatus,allReviewers];
+ addReviewer,reviewerStatus,allReviewers,reminders,reminderSchedule];

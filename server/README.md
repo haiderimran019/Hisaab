@@ -100,10 +100,43 @@ handler, which is what stops the twentieth route being the one that forgot.
 | `POST /v1/admin/reviewer` | add a practitioner. Created `pending` |
 | `POST /v1/admin/reviewer/status` | publish or suspend one |
 | `GET /v1/admin/reviewers` | all three states |
+| `GET /v1/admin/reminders?day=` | what the cron would send that day, sending nothing |
+| `POST /v1/admin/reminders` | run the reminder sweep. **Dry run unless you pass `dryRun:false`** |
 
 Browser callers must come from `ALLOWED_ORIGIN`. IP addresses are never stored:
 rate limiting uses a truncated SHA-256 of the IP with a salt that rotates daily,
 and those rows are purged with the day.
+
+## Filing reminders
+
+`[triggers] crons` in `wrangler.toml` fires `scheduled()` once a day. It asks
+`src/reminders.ts` whether a statutory deadline falls 30 or 7 days ahead, and if
+one does, emails every confirmed address.
+
+Four rules are load-bearing, and all four are tested:
+
+- **Only obligations every filer has.** The dates come from `src/deadlines.ts`
+  — imported, not copied, so one table is the single source for a legal fact —
+  and only entries marked `universal` are ever emailed. Advance tax under
+  s.147 depends on a last assessed liability this service has never seen and the
+  app deliberately does not evaluate, so it is never sent. Emailing it would be
+  advice.
+- **No figure, and no claim to know anything.** The message carries a date, a
+  section reference and a statement that Hisaab cannot see whether you filed or
+  what you earned. There is nothing else it could carry: this service has no
+  figure to put in one.
+- **One message per date.** The return and the wealth statement share
+  30 September, so they are named together rather than sent as two emails on one
+  morning.
+- **It cannot double-send.** `reminder_log`'s primary key is
+  `(email, tax_year, milestone)` and `recordReminder` returns false when the row
+  exists, so a retried cron, a second deployment or a half-finished run resumes
+  instead of re-sending. Rows are deleted by `/v1/portal/erase` with the rest of
+  a person's records.
+
+With no `RESEND_KEY` nothing is sent **and nothing is logged**, so turning mail
+on later does not skip the first reminder. Delete the `[triggers]` block and the
+service still works; no reminders go out and nothing else changes.
 
 ## Selling keys
 
@@ -216,7 +249,7 @@ route returns 501 and the email link still works.
 ## Running the tests
 
 ```bash
-cd server && npm test        # 58 tests, no network, no wrangler needed
+cd server && npm test        # 67 tests, no network, no wrangler needed
 ```
 
 The handlers take a `Store` interface, so the suite runs against an in-memory

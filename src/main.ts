@@ -1,7 +1,9 @@
-import '@fontsource/poppins/400.css';
-import '@fontsource/poppins/500.css';
-import '@fontsource/poppins/600.css';
-import '@fontsource/poppins/700.css';
+/* Instrument Sans for everything the eye reads, JetBrains Mono for everything
+   the eye checks. A figure, a key and a recovery code are read character by
+   character, and a proportional font makes that slower and less certain. Both
+   are variable, so four weights cost one file each and the bundle shrank. */
+import '@fontsource-variable/instrument-sans';
+import '@fontsource-variable/jetbrains-mono';
 import { createIcons, LayoutDashboard, ArrowDownLeft, ArrowUpRight, ReceiptText, FileText, Calculator, Settings, Plus, ArrowRight, Download, Search, ChevronDown, ShieldCheck, LockKeyhole, Wallet, Menu, X, Trash2, Pencil, ExternalLink, RefreshCw, Check, CircleHelp, LogOut, TrendingUp, CircleDollarSign, Landmark, Clock, Upload, Printer, Eye, Copy, OctagonAlert, Sparkles } from 'lucide';
 import Decimal from 'decimal.js';
 import {blankWorkspace,workspaceSchema,receiptSchema,expenseSchema,invoiceSchema,receiptMath,expenseMath,invoiceTotal,inYear,estimate,sum,money,csv,escapeHTML as h,SOURCES,RULE_VERSION,currencies,type Workspace,type Receipt,type Expense,type Invoice} from './core';
@@ -34,8 +36,16 @@ let draft:ImportDraft|null=null,lineFilter='pending',accountFilter='all',pending
 let review:ReviewStatus={state:'none'},twoFactorDraft:TwoFactorDraft|null=null;
 let pending2fa:Unlocked|null=null;
 let packDigestCache='';
+/* Whether this device has a platform authenticator, answered once at startup:
+   the query is async, and a control that appears a beat after the panel draws
+   looks broken. False hides the control rather than offering a door that will
+   not open. */
+let passkeyCapable=false;
 const ctx=():Ctx=>({workspace,year,license,limits,today:today(),draft,lineFilter,accountFilter,demo:mode==='demo'});
-const securityCtx=()=>({workspace,review,twoFactorDraft,demo:mode!=='vault'});
+const securityCtx=()=>({workspace,review,twoFactorDraft,demo:mode!=='vault',
+ passkeys:(unlockers?passkeySlots(unlockers):[]).map(k=>
+  ({credentialId:k.credentialId,label:k.label,addedOn:k.addedOn})),
+ passkeyCapable});
 /** The review tick and the pack fingerprint are recomputed whenever records change. */
 async function refreshReview(){
  try{
@@ -280,6 +290,18 @@ let confirmMessage='',backupToRestore='';
 function openDrawer(type:string,id=''){drawer=type;editId=id;render();const el=document.querySelector<HTMLInputElement>('.drawer input');if(el)el.focus();if(pendingLine)prefillFromLine();if(type==='income')updateIncomePreview();}
 function confirmChange(message:string,action:()=>Promise<void>){confirmMessage=message;confirmAction=action;openDrawer('confirm');}
 function hasVault(){try{return !!localStorage.getItem(VAULT_KEY);}catch{return false;}}
+/* Which passkeys the stored workspace will accept. This reads the envelope's
+   metadata — the credential ids and labels sitting outside the ciphertext — so
+   the lock screen can offer the button without anything being decrypted first.
+   A malformed or older envelope simply offers nothing. */
+function storedPasskeys(){
+ try{
+  const raw=localStorage.getItem(VAULT_KEY);
+  if(!raw)return [];
+  const envelope=parseEnvelope(raw);
+  return envelope.format==='hisaab-aesgcm-v1'?[]:passkeySlots(envelope.unlockers);
+ }catch{return [];}
+}
 function renderLocked(){
  if(pending2fa){
   const left=RECOVERY_COUNT-pending2fa.workspace.security.recoveryUsed;
@@ -302,7 +324,8 @@ function renderLocked(){
    </section></main>`;
   refreshIcons();bind();return;
  }
- app.innerHTML=`<main class="lock-screen"><a class="brand" href="#"><span class="brand-symbol">${icon('wallet')}</span>hisaab<span class="brand-dot">.</span></a><section class="panel lock-panel"><div class="vault-illustration">${icon('lock-keyhole')}</div><h1>Your books are locked.</h1><p>Enter your passphrase to return to your private workspace.</p><form id="unlock-form"><label class="field"><span>Passphrase</span><input name="passphrase" type="password" minlength="12" maxlength="256" required autocomplete="current-password"></label><div class="form-error" role="alert"></div><button class="btn primary wide" type="submit">Unlock workspace ${icon('arrow-right')}</button></form><button class="text-link" data-action="demo">Explore demo instead</button><p class="note">No passphrase recovery. Your backup remains encrypted.</p>
+ const slots=passkeyCapable?storedPasskeys():[];
+ app.innerHTML=`<main class="lock-screen"><a class="brand" href="#"><span class="brand-symbol">${icon('wallet')}</span>hisaab<span class="brand-dot">.</span></a><section class="panel lock-panel"><div class="vault-illustration">${icon('lock-keyhole')}</div><h1>Your books are locked.</h1><p>Enter your passphrase to return to your private workspace.</p>${slots.length?`<button class="btn secondary wide" data-action="unlock-passkey">${icon('shield-check')}Unlock with ${h(slots[0].label)}</button><p class="note or-divider">or use your passphrase</p>`:''}<form id="unlock-form"><label class="field"><span>Passphrase</span><input name="passphrase" type="password" minlength="12" maxlength="256" required autocomplete="current-password"></label><div class="form-error" role="alert"></div><button class="btn primary wide" type="submit">Unlock workspace ${icon('arrow-right')}</button></form><button class="text-link" data-action="demo">Explore demo instead</button><p class="note">No passphrase recovery. Your backup remains encrypted.</p>
  <ul class="trust-list lock-trust">
   <li>${icon('shield-check')}<span>Your books are encrypted on this device. We have no copy and no way to read them.</span></li>
   <li>${icon('circle-help')}<span>Hisaab is not connected to FBR or your bank, and files nothing on your behalf.</span></li>
@@ -323,6 +346,15 @@ async function doAction(action:string){switch(action){
   const secret=randomSecret();
   twoFactorDraft={secret,uri:otpauthUri(secret,workspace.profile.name),codes:makeRecoveryCodes(),confirmed:false};
   render();document.querySelector('.twofa-setup')?.scrollIntoView({block:'start'});break;}
+ case 'add-passkey':{
+  if(mode!=='vault'){toast('Create a private workspace first.');break;}
+  if(!dek||!unlockers)throw Error('Workspace is locked.');
+  // The passphrase slot is never touched here, so the worst case of a failed
+  // registration is that nothing was added.
+  const {credentialId,prf}=await registerPasskey(workspace.profile.name||'Hisaab workspace');
+  unlockers=await addPasskey(unlockers,dek,credentialId,prf,deviceLabel(),new Date().toISOString());
+  await persist(workspace);render();
+  toast('This device can now open your workspace. Your passphrase still works.');break;}
  case 'disable-2fa':
   confirmChange('Turn off the two-factor code? Your passphrase alone will open this workspace again, and your recovery codes stop working.',async()=>{
    await change(w=>{w.security={...w.security,twoFactor:false,totpSecret:'',recovery:[],recoveryUsed:0};});
@@ -362,6 +394,14 @@ function bind(){bindStatements();bindSecurity();document.querySelectorAll<HTMLEl
  document.querySelector<HTMLSelectElement>('#category-filter')?.addEventListener('change',ev=>{categoryFilter=(ev.target as HTMLSelectElement).value;render();});document.querySelector<HTMLSelectElement>('#rail-filter')?.addEventListener('change',ev=>{railFilter=(ev.target as HTMLSelectElement).value;render();});
  for(const [attr,type] of [['edit-income','income'],['edit-expense','expense'],['edit-invoice','invoice']])document.querySelectorAll<HTMLElement>(`[data-${attr}]`).forEach(el=>el.onclick=()=>openDrawer(type,el.getAttribute(`data-${attr}`)!));
  document.querySelectorAll<HTMLElement>('[data-print]').forEach(el=>el.onclick=()=>printInvoice(el.dataset.print!));
+ /* Removing a passkey is always safe — the passphrase slot cannot be removed —
+    so this confirms for the surprise, not for the risk. */
+ document.querySelectorAll<HTMLElement>('[data-remove-passkey]').forEach(el=>el.onclick=()=>{
+  const id=el.dataset.removePasskey!;
+  confirmChange('Remove this passkey? This device will need your passphrase again. Your records are untouched.',async()=>{
+   if(!unlockers)throw Error('Workspace is locked.');
+   unlockers=removePasskey(unlockers,id);
+   await persist(workspace);drawer='';render();toast('Passkey removed.');});});
  document.querySelectorAll<HTMLElement>('[data-delete]').forEach(el=>el.onclick=()=>{const [table,id]=el.dataset.delete!.split(':');confirmChange('Remove this record? Export a backup first if you may need it later.',async()=>{await change(w=>{w[table as 'receipts']=w[table as 'receipts'].filter(r=>r.id!==id);});});});
 
  document.querySelectorAll<HTMLElement>('[data-view-receipt]').forEach(el=>el.onclick=()=>{const a=workspace.expenses.find(e=>e.id===el.dataset.viewReceipt)?.receipt;if(!a)return;const bytes=Uint8Array.from(atob(a.data.split(',')[1]),c=>c.charCodeAt(0));const url=URL.createObjectURL(new Blob([bytes],{type:a.mime}));const link=document.createElement('a');link.href=url;link.download=a.name;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);});
@@ -395,6 +435,31 @@ function bind(){bindStatements();bindSecurity();document.querySelectorAll<HTMLEl
   }
   await openWorkspace(result,'Workspace unlocked.');
  };
+ /* Passkey unlock. Bound here rather than in doAction because it finishes
+    through the same openWorkspace path as the passphrase, two-factor gate
+    included: a passkey replaces the passphrase, not the second factor.
+    Assigned after the generic [data-action] pass, which it overrides. */
+ document.querySelectorAll<HTMLElement>('[data-action="unlock-passkey"]').forEach(el=>el.onclick=()=>{
+  void (async()=>{
+   const raw=localStorage.getItem(VAULT_KEY);
+   if(!raw)throw Error('No workspace stored in this browser.');
+   const slots=storedPasskeys();
+   if(!slots.length)throw Error('No passkey is registered for this workspace.');
+   const assertion=await assertPasskey(slots.map(k=>k.credentialId));
+   // Null means the person dismissed the prompt. Not an error worth shouting.
+   if(!assertion)return;
+   const result=await unlockWithPasskey(raw,assertion.credentialId,assertion.prf);
+   if(result.workspace.security.twoFactor&&result.workspace.security.totpSecret){
+    pending2fa=result;mode='locked';drawer='';render();
+    document.querySelector<HTMLInputElement>('#unlock-2fa-form input')?.focus();
+    return;
+   }
+   await openWorkspace(result,'Workspace unlocked.');
+  })().catch(e=>{
+   const box=document.querySelector('.lock-panel .form-error');
+   if(box)box.textContent=safeError(e);else toast(safeError(e));
+  });
+ });
  bindForm('unlock-2fa-form',async(_f,d)=>{
   if(!pending2fa)throw Error('Start again from your passphrase.');
   const ok=await verifyCode(pending2fa.workspace.security.totpSecret,String(d.get('code')??''));
@@ -440,6 +505,12 @@ if(hasVault()){mode='locked';workspace=blankWorkspace();}
 void refreshLicense().then(()=>{
  render();
  if(serviceConfigured())void pingOnce(license,today());
+});
+// Re-rendered on the answer, because the lock screen's passkey button and the
+// security control both depend on it and neither is worth blocking boot for.
+void passkeysAvailable().then(available=>{
+ if(!available)return;
+ passkeyCapable=true;render();
 });
 
 /* ── Statement import, line review and entitlements ───────────────────────── */

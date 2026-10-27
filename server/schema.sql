@@ -153,3 +153,17 @@ create table if not exists erasures (
   erased_at  text not null,
   scope      text not null check (scope in ('subscriber','licence','all'))
 );
+
+-- Filing reminders. Keyed so a cron that fires twice, or a retried run, cannot
+-- send the same person the same reminder again. Holds an address and a tax
+-- year — no figure, nothing about anybody's liability, because this service
+-- still has no idea what anyone earns. Deleted by /v1/portal/erase like the
+-- rest of a person's rows.
+create table if not exists reminder_log (
+ email text not null,
+ tax_year text not null,
+ milestone text not null,
+ sent_at text not null,
+ primary key (email, tax_year, milestone)
+);
+create index if not exists reminder_log_year on reminder_log (tax_year, milestone);
