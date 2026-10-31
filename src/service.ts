@@ -1,4 +1,4 @@
-/* Talking to the Hisaab service — the only code in the app that may do so.
+/* Talking to the Hisaab service — the only code in the app that contacts the optional commercial Worker.
 
    Rules this file exists to keep:
    - Nothing financial is ever sent. The usage ping is a date, a build string and
@@ -22,7 +22,7 @@ export const API_BASE='';
     reading stays hidden until this is filled in as well as API_BASE. */
 export const READER_NAME='';
 export const readerConfigured=()=>API_BASE.trim().length>0&&READER_NAME.trim().length>0;
-export const APP_VERSION='1.1.0';
+export const APP_VERSION='1.2.0';
 const PING_DAY_KEY='hisaab.ping.day';
 const PING_ON_KEY='hisaab.ping.on';
 

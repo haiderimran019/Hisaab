@@ -1,158 +1,58 @@
 # Hisaab
 
-**Your work. Your worth.** Finance for independent workers in Pakistan.
+**Free, private bookkeeping for Pakistani freelancers.**
 
-Invoices, multi-currency income, actual PKR settlement after fees, expense evidence and source-linked Pakistani tax estimates, in a private encrypted workspace. Built with TypeScript, Vite, Decimal.js, Zod and WebCrypto. Poppins typography, light by default with a dark theme that follows your device, and a soft indigo interface palette — see [DESIGN.md](DESIGN.md).
+[Open Hisaab](https://haiderimran019.github.io/Hisaab/). No purchase, GitHub account, API key or sign-up is needed. Start with the labelled demo, then create an empty encrypted workspace with a passphrase. Each browser holds its own separate workspace.
 
-![Hisaab desktop demo](docs/screenshots/desktop.jpg)
+## Current release
 
-## Use it
+- Muse-inspired chat interface, light/dark themes, self-hosted Figtree, pinned composer and direct record navigation. Income and expense graphs, source-linked analysis and latest-five record previews.
+- Guided finance chat works without a model. English, Roman Urdu and Urdu routing; PKR with lakh/crore input, DD/MM/YYYY display, July–June tax years.
+- “I got paid $500” or “bijli ka bill 8000” opens a prefilled review form. Missing settlement rates and evidence are never guessed. Chat changes become Confirm / Edit / Reject proposals; conflict-checked undo and activity are encrypted with the workspace.
+- Local income, expenses, invoices, statement CSV import, user-confirmed classification and reconciliation. Existing money/tax/reconciliation calculations remain deterministic.
+- Monthly, client, source, category and account analysis; duplicates, unexplained balances, unmatched Sent invoices and unusual charges. Saving estimates use the customer's own records, with sources and review actions.
+- Local Filing Pack PDF; Excel, CSV and PDF report exports; existing tax worksheet JSON. Chat document cards preserve a snapshot and offer local preparation, download and native file sharing where supported. Invoice printing remains available; an invoice-specific PDF from chat currently needs a single invoice in the selected year.
+- Encrypted current/recent chats, editable profile memory, and user-provided IRIS codes labelled **From you, not verified**. Removing an IRIS memory removes its dynamic presentation from help answers. No verified IRIS code is fabricated.
+- Optional **Qwen3-1.7B on device**, lazy-loaded in a worker through pinned WebLLM. Settings explains the approximately 1.4 GB model download, compatible WebGPU requirement and approximately 2 GB GPU memory. Guided chat remains available on smaller phones. The model selects allowed intents/definitions; it cannot calculate liabilities, invent codes or write records. The browser-GPU path requires device verification; automated checks cover build, routing contracts and fallback paths.
+- Settings offers an offline app-shell download and local calendar reminders for monthly statements and statutory filing dates. Calendar software controls notifications. Check FBR for extensions.
 
-**[Open the public app](https://haiderimran019.github.io/Hisaab/)** — no GitHub or ChatGPT account required. Each visitor has a separate encrypted workspace in their own browser.
+## Run and check
 
-```bash
+```sh
 npm ci
 npm run dev
-```
-
-Open the URL printed by Vite. Explore the labelled demo, or create an empty private workspace with a passphrase of at least 12 characters. No API keys or environment variables are required. Run over HTTPS in production (localhost is supported by WebCrypto).
-
-```bash
-npm test        # monetary, tax, schema, import, licensing, injection and encryption tests
-npm run build   # TypeScript check and production assets in dist/
+npm test
+npm run build
+npm audit --omit=dev --audit-level=high
+node --import tsx --test server/test/*.test.ts
 npm run preview
 ```
 
-## How it feels to use
+The production build is static and publishes through GitHub Pages on a push to `main`. AI, PDF and Excel code are loaded on demand. `dist/` contains the generated site and offline shell worker.
 
-**Four places, and one Add.** Today, Money, Tax, Filing Pack. Invoices and
-statement lines used to be top-level navigation; they are tabs inside Money now,
-because those are an accountant's categories, not the ones a person arrives with.
+For the developer's localhost Ollama router:
 
-**Today is a guide, not a dashboard.** It tells you which of six steps you are on,
-in one sentence, with one button: tell us about your work → add your accounts →
-import statements → say what each payment was → make it balance → get your Filing
-Pack. The three money figures are in words people say out loud — *what reached
-you*, *lost to fees*, *keep aside for tax* — and one switch blurs them for working
-in public.
-
-**One Add, reachable everywhere**, instead of navigate-then-act. It asks in plain
-words: *I got paid · I spent money on work · Send an invoice · Import a bank
-statement · Add an account*. On a phone it is the button in the middle of the bar.
-
-Built for a phone first: every wide table becomes stacked labelled cards rather
-than something to scroll sideways, and every control is thumb-sized.
-
-## The paid workflow
-
-```
-Import a CSV statement
-  → confirm which column is what
-  → repeats and own-account transfers flagged
-  → you decide what every remaining line is
-  → balances reconcile, or the unexplained amount stays on screen
-  → Filing Pack: one source-linked document for your accountant or for IRIS
+```sh
+ollama pull qwen3:1.7b
+npm run dev:assistant
 ```
 
-Three rules this product will not break:
+Ollama must be installed separately. The local gateway binds to loopback, never to the public internet. It is not a hosted multi-user API.
 
-1. **Nothing becomes income until a person says so.** Imported lines wait to be classified.
-2. **An unexplained difference is never hidden.** It is reported on the account card and printed on the front page of the Filing Pack. No code path closes a gap with a balancing entry.
-3. **Every number is traceable** to a statement row, an attached document, or something you explicitly declared.
+## Privacy and tax boundaries
 
-Sold as an annual licence key — Easypaisa, JazzCash, Raast and bank transfer are how people here actually pay, so nothing is held on a card and no customer-data backend exists. Keys are verified offline against a signature. **Free** keeps records and shows the estimate; **Pro, PKR 2,400 a year** adds unlimited imports, up to 10 accounts, reconciliation and the Filing Pack; **Accountant, PKR 14,400 a year** adds 40 accounts and a workspace per client. Licence enforcement is client-side and the app says so. An expired key never blocks your own records, exports or backups — only the paid steps stop. See [docs/COMMERCIAL.md](docs/COMMERCIAL.md) for the reasoning and [docs/LICENSING.md](docs/LICENSING.md) for how keys are issued.
+Records, chats, memories, file snapshots and proposal activity use the existing AES-GCM vault. The unsaved demo lives in memory. Locking clears decrypted state and terminates the on-device model. Back up the encrypted workspace; a forgotten passphrase has no publisher reset.
 
-## What works
+Optional model downloads expose an IP address to Hugging Face/GitHub, never chat content. `Never touch the network` blocks downloads, reference rates and localhost routing; an already-loaded on-device model can still run locally. No browser API key or private-data training endpoint exists. Personal history is context, not automatic shared-model fine-tuning.
 
-- **Statement import:** CSV parsing in the browser with column mapping you confirm, detection of the header row under a bank's title block, debit/credit or signed-amount or Dr/Cr layouts, Pakistani money and date formats, duplicate detection within and across imports, own-transfer suggestions, and per-row provenance (file, fingerprint, row number). Rows it cannot read are listed with their row numbers, never dropped quietly. **PDF statements are not read.** The CSV formats of real Pakistani bank, Payoneer and Wise exports have not yet been tested against the live product — see [docs/VERIFICATION.md](docs/VERIFICATION.md).
-- **Reconciliation:** per-account opening balance, movement, computed closing and the statement's closing, with the unexplained difference always shown and duplicates excluded from the arithmetic.
-- **Filing Pack:** a printable, source-linked package — unresolved items first, accounts and reconciliation, income by classification, payment-by-payment detail citing statement rows, expenses, the tax scenario with its rule version, a document checklist, your declarations, and an explicit "not reviewed" stamp with a practitioner sign-off block.
-- **Income:** create/edit/delete/search/filter receipts in USD, GBP, EUR, AED or PKR; record actual FX, original-currency processor fees, PKR bank fees, tax withheld, realization evidence and a separate tax base.
-- **Invoices:** create/edit/status tracking, due dates, quantity × unit price, client details and printable/PDF-ready invoices. Invoice status never silently creates income. Sharing is manual; no email or payment is sent.
-- **Expenses:** actual FX, business-use allocation, evidence reference, optional PNG/JPEG/PDF receipt encrypted with your book, and explicit domestic-deduction claim.
-- **FX:** transparent settlement calculator plus opt-in, dated ExchangeRate-API reference quotes. Provider fees are entered, never invented. Reference FX is not historical FX or an executable bank offer.
-- **Pakistan tax center:** TY2026/TY2027, 154A export scenarios (PSEB IT/ITeS and other services), domestic individual-business slabs and surcharge, separate withholding credits, statutory eligibility gates, provincial/special-regime review flags and official FBR source links.
-- **Reports:** income/expense CSVs, source-linked tax worksheet JSON, printable worksheet, monthly reconciliation and filing checklist. Exports are for accountant review, not an IRIS import or submission.
-- **Privacy and security:** AES-256-GCM encrypted local storage under a random workspace key, wrapped by a key derived from the passphrase with PBKDF2 at 600,000 iterations; encrypted backup/restore and explicit local deletion. **Two-factor codes on unlock** from any authenticator app (offline — no phone number, no email address), **8 single-use recovery codes** stored only as hashes, **Never touch the network** for the optional requests available in the public build, **hide amounts** for working in public, and auto-lock at 1/5/15/30 minutes plus lock on tab hide. A [privacy notice](docs/PRIVACY.md) written to be read, inside the app and in the repository from the same source.
-- **Practitioner review tick:** a reviewer signs a certificate bound to your pack's fingerprint; the pack prints a verified tick with their name, registration and date. Change one figure and the tick turns amber by itself. No reviewer is published with this release, so no tick can be shown yet — not even by us.
-- **Responsive UI:** desktop side navigation, mobile bottom navigation, keyboard focus, reduced-motion support and labelled controls. Fonts are self-hosted.
+Tax answers use the checked application rule register for supported TY 2026/2027 scenarios, with eligibility gates and FBR sources. Estimates need review. Hisaab does not submit returns, pay tax, verify taxpayer status or claim complete current-law coverage. All catalogue IRIS codes remain unavailable until exact tax-year provenance is supplied and checked.
 
-## The service (optional, and off by default)
+See [SECURITY.md](SECURITY.md), [privacy](docs/PRIVACY.md), [tax rules](docs/TAX-RULES.md), [IRIS map](docs/IRIS-MAP.md), and [design](DESIGN.md).
 
-`server/` is optional Cloudflare Worker code for consented email subscriptions,
-usage counts, a sales ledger and key re-delivery, practitioner review requests,
-and document transcription. The licence portal and review routes are backend
-groundwork; this public app has no portal or review-request screen.
+## Account-connected features still require setup
 
-**It refuses customer financial records.** There is no endpoint or database
-column for a customer's income, client, statement row or tax figure. The sales
-ledger does record what a customer paid *Hisaab*. Every POST body has an
-allow-list of fields; tests send realistic financial payloads to every POST
-route and assert that they are refused.
+**Google sign-in, encrypted cross-device sync, Gmail imports, hosted Qwen inference and background push/email reminders are not live.** No sign-in button pretends that they work. They need an owned Google OAuth project and a deployed authenticated backend; Gmail may also require restricted-scope verification. Google identity alone must never decrypt a vault: a new device still needs an unlock/recovery secret.
 
-Usage counting sends **no identifier at all** — a date, a build string and a plan
-word — so the figures are *opens, not people*, and `/v1/stats` says so in its own
-response. One person on two browsers counts twice; anyone who switches it off
-counts zero. That undercount is the price of not putting a tracking id on a
-privacy-first product.
+The existing `server/` is a separately configured Worker service. It currently rejects customer financial payloads and must not be reused as a plaintext ledger store. Its tests run separately. There is no configured public customer-data service in this release.
 
-`API_BASE` in [src/service.ts](src/service.ts) is empty by default, so **this build
-contacts nothing and shows no sign-up form**. Setting it is a deliberate act, and
-the privacy notice rewrites itself to describe whichever build ships. Deployment,
-secrets and what is still missing before it is a real service: [server/README.md](server/README.md).
-
-## Pakistan rules, honestly scoped
-
-Rules were checked against official FBR publications on **21 October 2026**. The estimate shows its inputs, rule version, legal references and conditions. Unsupported years fail closed. Final liability is blocked when facts, classification or evidence require review. The app never treats a foreign payment-provider label as proof of tax eligibility.
-
-Read the [tax rule register](docs/TAX-RULES.md) for formulas, legal sources, year applicability and exclusions. Provincial/ICT sales-tax computation, salary/mixed-income assessment, overseas retained balances, foreign credits/treaties, super/minimum tax, personal credits, depreciation, wealth reconciliation and actual return submission require separate review. Social-media receipts are flagged for section 154B review, not misclassified as IT exports. This is an estimate, never tax advice. It has not been reviewed by a licensed Pakistani tax practitioner.
-
-## Data and security
-
-There is no customer-data backend, analytics, bank synchronization or government login. Your browser stores only authenticated ciphertext; the demo stays in memory. Private hosting access and local-vault encryption are separate protections. An optional FX request exposes network metadata to the provider, never your records. CSV/worksheet exports are plaintext; encrypted backups are protected by your passphrase. Keep a backup: browser clearing or a lost passphrase can permanently lose access.
-
-See [SECURITY.md](SECURITY.md) for implemented controls, threat model, limitations and deployment headers. `public/_headers` is provided for supporting hosts; enforce and verify equivalent headers on other platforms. This is not an independently audited financial service.
-
-## Architecture and variables
-
-| Module | Responsibility |
-| --- | --- |
-| `src/core.ts` | Strict schemas, decimal arithmetic, tax-year selection, deterministic Pakistan calculations, accounts and statement lines, reconciliation, readiness, schema migration, CSV/HTML escaping |
-| `src/statements.ts` | CSV parsing, header detection, column mapping, money and date readers, duplicate fingerprints, own-transfer pairing |
-| `src/pack.ts` | The Filing Pack: data, printable HTML and the review tick |
-| `src/totp.ts` | Authenticator codes (RFC 6238) and single-use recovery codes |
-| `src/review.ts` | Practitioner certificates and the pack fingerprint they sign |
-| `src/ui-home.ts` | The six-step guide and the plain-language money cards |
-| `src/ui-privacy.ts` | Privacy controls, two-factor setup, the review panel and the privacy notice |
-| `src/license.ts` | Offline ECDSA licence verification, trial, plan limits |
-| `src/pricing.ts` | Prices, plan copy, payment rails — the only place to change commercial terms |
-| `src/vault.ts` | Encryption, key derivation, size-bounded authenticated restore (migrates older workspaces on unlock) |
-| `src/main.ts` | Local application state, forms, reports, print, optional public FX request |
-| `src/ui-statements.ts` | Views for statements, reconciliation, the plan panel and the pack gate |
-| `src/format.ts` | Shared number, date and icon formatting |
-| `src/service.ts` | The only code that may contact the service. An empty API base means it contacts nothing |
-| `server/` | The Worker: email list, usage counts, and no way to accept financial data |
-| `src/demo.ts` | Clearly labelled synthetic sample data, including a worked statement |
-| `src/style.css` | Responsive design and print styles |
-| `tools/make-license.mjs` | Publisher-side key generation, issuing and verification |
-| `tools/make-review.mjs` | Reviewer onboarding and signing a customer's Filing Pack |
-
-Inputs and units are documented in the [feature/algorithm plan](docs/PLAN.md). Money uses decimal arithmetic with half-up rounding to two PKR decimals; per-unit FX supports six decimals. The selected tax year controls July–June receipt and expense reporting. Tax-profile confirmations are year-specific. Foreign amounts, tax bases and withholding remain distinct.
-
-## Public hosting
-
-GitHub Pages serves the compiled `dist/` artifact through `.github/workflows/checks.yml`. Tests, build and the production dependency audit must pass before deployment. Pull requests only validate; pushes to `main` publish the verified build. Repository Pages settings must use **GitHub Actions**, not the raw source branch.
-
-The public app has no shared financial-data backend and does not expose another visitor's records. Browser storage is specific to the site origin. GitHub Pages does not apply `public/_headers`; the HTML CSP remains active, while HTTP headers such as `frame-ancestors` require a supporting host or proxy.
-
-## Release status
-
-This is a functional **local-first product with a working paid mechanism**, not a commercially certified tax service. Statement import, reconciliation, the Filing Pack and offline licence keys are implemented and tested. PDF transcription code exists but is disabled in the public build and has not been verified with a real reader. Account sync, bank OAuth or statement APIs, a customer-facing licence portal, a practitioner review-request screen, shared accountant workspaces, card subscriptions, and professional tax or security approval are **not** implemented.
-
-Before money changes hands, four things that are not code must exist: a qualified Pakistani practitioner's written review of the tax rules and the Filing Pack's wording; published terms, privacy notice and refund policy; real payment details in `src/pricing.ts` (deliberately left empty) with a sales ledger; and a process for correcting and reissuing if a rule turns out to be wrong. [docs/COMMERCIAL.md](docs/COMMERCIAL.md) sets out the evidence plan and the thresholds at which this concept should be narrowed or dropped. The [plan](docs/PLAN.md) contains the commercial roadmap. See [verification evidence](docs/VERIFICATION.md) for checks actually run and remaining validation limits.
-
-**Workspace format.** Encrypted workspaces are version 3. Version 1 and version 2 workspaces from earlier releases are migrated on unlock or restore, keeping every receipt, expense, invoice, account, statement line and declaration; tests assert no record is lost and that a migrated workspace is never silently given security settings it never had. An unknown or newer version is refused rather than guessed at.
-
-**What a subscription gets you**, feature by feature, with an equally plain list of what is *not* built and what "whole tax help" would really take: [docs/FEATURES.md](docs/FEATURES.md).
-
-Third-party licenses remain with their authors. Lucide uses ISC; Poppins uses SIL OFL; Decimal.js and Zod use MIT. Live quotes are attributed to [ExchangeRate-API](https://www.exchangerate-api.com/). The supplied screenshot inspired the palette and composition; none of its shipping imagery was copied.
+The reusable policy is in `knowledge/assistant-policy.md`; actual runtime routing is in `src/assistant-contract.ts`, checked explanations in `src/tax-help.ts`, calculations in `src/core.ts`, and IRIS provenance in `src/iris.ts`. Improve these using reviewed sources and synthetic multilingual examples, never automatic training on private chats or bank mail.

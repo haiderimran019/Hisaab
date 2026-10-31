@@ -2,7 +2,7 @@
    reconciliation and the plan panel. Pure string builders — every event is wired
    in main.ts, which owns application state. */
 import Decimal from 'decimal.js';
-import {reconcile,readiness,escapeHTML as h,type Workspace,type StatementLine,accountKinds,currencies} from './core';
+import {receiptMath,sum,reconcile,readiness,escapeHTML as h,type Workspace,type StatementLine,accountKinds,currencies} from './core';
 import {fieldLabels,type FieldName,type ParsedImport,transferCandidates} from './statements';
 import {icon,num,dateLabel} from './format';
 import {LIMITS,planLabel,importsThisMonth,type LicenseStatus,type Limits} from './license';
@@ -45,7 +45,7 @@ export function statementsView(ctx:Ctx){
   (ctx.lineFilter==='all'?l.status!=='duplicate':ctx.lineFilter===l.status));
 
  return `<div class="toolbar statements-bar">
-  <div class="seg">${[['pending',`Needs a decision (${pending.length})`],['all','All lines'],['income','Income'],['expense','Expenses'],['transfer','Transfers'],['excluded','Not business'],['duplicate',`Duplicates (${w.lines.filter(l=>l.status==='duplicate').length})`]]
+  <div class="seg">${[['pending',`Needs a decision (${pending.length})`],['all','All lines'],['duplicate',`Duplicates (${w.lines.filter(l=>l.status==='duplicate').length})`]]
    .map(([v,label])=>`<button class="seg-btn ${ctx.lineFilter===v?'active':''}" data-line-filter="${v}">${h(label)}</button>`).join('')}</div>
   <div class="bar-right">
    <label class="year-picker"><span class="sr-only">Account</span><select id="account-filter"><option value="all">All accounts</option>${accounts.map(a=>`<option value="${a.id}" ${ctx.accountFilter===a.id?'selected':''}>${h(a.label)}</option>`).join('')}</select>${icon('chevron-down')}</label>
@@ -54,7 +54,16 @@ export function statementsView(ctx:Ctx){
    ${readerConfigured()&&limits.filingPack?`<button class="btn secondary" data-action="read-document">${icon('file-text')}Read a PDF</button>`:''}
   </div>
  </div>
- <p class="quota">${icon('clock')}${h(quota)} · ${h(ctx.demo?'Demo — paid steps unlocked on sample data':planLabel(license))}${limits.importsPerMonth!==Infinity?' · <button class="text-link" data-page="Settings">See Pro</button>':''}</p>
+
+
+
+ <section class="panel"><div class="panel-head"><div><h2>${({pending:'Lines that need a decision',all:'All statement lines',income:'Lines you classified as income',expense:'Lines you classified as expenses',transfer:'Transfers between your own accounts',excluded:'Lines marked not business',duplicate:'Duplicate lines, excluded from reconciliation'} as Record<string,string>)[ctx.lineFilter]}</h2>
+  <p>${ctx.lineFilter==='pending'?'Each decision is reversible. Nothing here is counted as income until you classify it.':'Every line keeps its file, row number and original text.'}</p></div></div>
+  ${filtered.length?`<div class="table-scroll"><table class="lines"><thead><tr><th>Date</th><th>Description</th><th>Account</th><th>Amount</th><th>State</th><th>Decide</th></tr></thead><tbody>
+  ${filtered.slice(0,300).map(l=>lineRow(w,l)).join('')}
+  </tbody></table></div>${filtered.length>300?`<p class="muted small">Showing the first 300 of ${filtered.length}. Narrow by account to see the rest.</p>`:''}`
+  :`<p class="muted">${ctx.lineFilter==='pending'?'Nothing is waiting. Every imported line has been classified.':'No lines here yet.'}</p>`}
+ </section>
 
  <div class="recon-grid">${accounts.map(a=>{
   const r=reconcile(w,a.id);
@@ -68,9 +77,9 @@ export function statementsView(ctx:Ctx){
     <div><dt>Closing from lines</dt><dd>${num(r.computedClosing)}</dd></div>
     <div><dt>Closing on statement</dt><dd>${num(r.closing)}</dd></div>
    </dl>
-   ${!r.confirmed?`<p class="recon-flag unconfirmed">${icon('circle-help')}Confirm the opening and closing balances from the statement before trusting this.</p>`
+   ${!r.confirmed?`<p class="recon-flag unconfirmed">${icon('circle-help')}Confirm the opening and closing balances from the statement before trusting this. <button class="warning-action" data-edit-account="${a.id}">Check balances</button></p>`
     :r.balanced?`<p class="recon-flag ok">${icon('check')}Reconciles to the statement.</p>`
-    :`<p class="recon-flag bad">${icon('octagon-alert')}${num(Math.abs(r.difference))} ${h(a.currency)} ${r.difference>0?'is missing from':'is extra in'} these lines. Find it — do not force it to zero.</p>`}
+    :`<p class="recon-flag bad">${icon('octagon-alert')}${num(Math.abs(r.difference))} ${h(a.currency)} ${r.difference>0?'is missing from':'is extra in'} these lines. Find it — do not force it to zero. <button class="warning-action" data-edit-account="${a.id}">Find difference</button></p>`}
    <p class="recon-counts">${r.lines} lines · ${r.pending} undecided · ${r.income} income · ${r.expense} expense · ${r.transfer} transfer${r.duplicates?` · ${r.duplicates} duplicate`:''}</p>
   </section>`;}).join('')}</div>
 
@@ -83,21 +92,14 @@ export function statementsView(ctx:Ctx){
    <td data-label="Money in">${h(dateLabel(p.in.date))}<br><small>${h(accountName(w,p.in.accountId))} · ${h(p.in.description.slice(0,60))}</small></td>
    <td data-label="Gap">${p.days} day${p.days===1?'':'s'}</td>
    <td data-label="Amount">${num(Math.abs(Number(p.out.amount)))}</td>
-   <td class="line-actions"><button class="btn tiny primary" data-pair="${p.out.id}:${p.in.id}">${icon('check')}Both are mine</button></td>
+   <td class="line-actions"><button class="btn tiny secondary" data-pair="${p.out.id}:${p.in.id}">${icon('check')}Both are mine</button></td>
   </tr>`).join('')}</tbody></table></div>
  </section>`:''}
 
- <section class="panel"><div class="panel-head"><div><h2>${({pending:'Lines that need a decision',all:'All statement lines',income:'Lines you classified as income',expense:'Lines you classified as expenses',transfer:'Transfers between your own accounts',excluded:'Lines marked not business',duplicate:'Duplicate lines, excluded from reconciliation'} as Record<string,string>)[ctx.lineFilter]}</h2>
-  <p>${ctx.lineFilter==='pending'?'Each decision is reversible. Nothing here is counted as income until you classify it.':'Every line keeps its file, row number and original text.'}</p></div></div>
-  ${filtered.length?`<div class="table-scroll"><table class="lines"><thead><tr><th>Date</th><th>Description</th><th>Account</th><th>Amount</th><th>State</th><th>Decide</th></tr></thead><tbody>
-  ${filtered.slice(0,300).map(l=>lineRow(w,l)).join('')}
-  </tbody></table></div>${filtered.length>300?`<p class="muted small">Showing the first 300 of ${filtered.length}. Narrow by account to see the rest.</p>`:''}`
-  :`<p class="muted">${ctx.lineFilter==='pending'?'Nothing is waiting. Every imported line has been classified.':'No lines here yet.'}</p>`}
- </section>
-
+ <section class="panel monthly-reconciliation"><h2>Monthly reconciliation</h2><p class="note">Recorded receipts · all amounts in PKR</p><div class="table-scroll"><table><thead><tr><th>Month</th><th>Gross</th><th>Fees</th><th>Withheld</th><th>Received</th></tr></thead><tbody>${Array.from({length:12},(_,i)=>{const month=`${i<6?ctx.year-1:ctx.year}-${String((i+6)%12+1).padStart(2,'0')}`,rows=w.receipts.filter(r=>r.date.startsWith(month));return `<tr><td>${h(dateLabel(month+'-01'))}</td>${['gross','fees','withheld','net'].map(key=>`<td>${num(sum(rows.map(r=>receiptMath(r)[key as 'gross'])))}</td>`).join('')}</tr>`;}).join('')}</tbody></table></div></section>
  ${w.batches.length?`<section class="panel"><div class="panel-head"><div><h2>Import history</h2><p>Provenance for every line above.</p></div></div>
   <div class="table-scroll"><table><thead><tr><th>File</th><th>Account</th><th>Imported</th><th>Rows read</th><th>Lines kept</th><th>Repeats skipped</th></tr></thead><tbody>
-  ${[...w.batches].reverse().map(b=>`<tr><td>${h(b.filename)}<br><small>fingerprint ${h(b.digest.slice(0,16))}</small></td><td>${h(accountName(w,b.accountId))}</td><td>${h(b.importedAt.slice(0,16).replace('T',' '))}</td><td>${b.rowCount}</td><td>${b.imported}</td><td>${b.skipped}</td></tr>`).join('')}
+  ${[...w.batches].reverse().map(b=>`<tr><td>${h(b.filename)}<br><small>fingerprint ${h(b.digest.slice(0,16))}</small></td><td>${h(accountName(w,b.accountId))}</td><td>${h(dateLabel(b.importedAt.slice(0,10))+' '+b.importedAt.slice(11,16))}</td><td>${b.rowCount}</td><td>${b.imported}</td><td>${b.skipped}</td></tr>`).join('')}
   </tbody></table></div></section>`:''}`;
 }
 const accountName=(w:Workspace,id:string)=>w.accounts.find(a=>a.id===id)?.label??'(removed account)';
@@ -113,8 +115,8 @@ function lineRow(w:Workspace,l:StatementLine){
   <td data-label="State">${statusChip(l.status)}</td>
   <td class="line-actions">${decided
    ?`<button class="btn tiny ghost" data-line-reset="${l.id}">${icon('refresh-cw')}Undo</button>`
-   :`${inflow?`<button class="btn tiny primary" data-line-income="${l.id}">${icon('arrow-down-left')}Income</button>`
-      :`<button class="btn tiny primary" data-line-expense="${l.id}">${icon('arrow-up-right')}Expense</button>`}
+   :`${inflow?`<button class="btn tiny secondary" data-line-income="${l.id}">${icon('arrow-down-left')}Income</button>`
+      :`<button class="btn tiny secondary" data-line-expense="${l.id}">${icon('arrow-up-right')}Expense</button>`}
      <button class="btn tiny ghost" data-line-transfer="${l.id}">${icon('refresh-cw')}My transfer</button>
      <button class="btn tiny ghost" data-line-exclude="${l.id}">${icon('x')}Not business</button>`}
   </td></tr>`;
@@ -253,14 +255,14 @@ export function packGate(ctx:Ctx){
  const state=readiness(ctx.workspace,ctx.year);
  const allowed=ctx.limits.filingPack;
  return `<section class="panel pack-panel">
-  <div class="panel-head"><div><h2>Filing Pack</h2><p>One document for your accountant, or to sit beside IRIS while you file. Every figure points at a statement line, an uploaded document or a declaration you made.</p></div></div>
+  <div class="panel-head"><p>A source-linked PDF for your accountant or IRIS.</p></div>
   ${state.blockers.length?`<div class="pack-warn"><h3>${icon('octagon-alert')}${state.blockers.length} thing${state.blockers.length===1?'':'s'} to resolve first</h3><ul>${state.blockers.map(b=>`<li>${h(b)}</li>`).join('')}</ul>
-   <p class="muted small">You can still produce the pack. It will print these on its front page, which is the point — a reviewer should see them.</p></div>`
+   <p class="muted small">Unresolved items are listed in the PDF.</p></div>`
    :`<p class="recon-flag ok">${icon('check')}Nothing is unexplained: every imported line is classified and every account reconciles.</p>`}
-  ${state.notes.length?`<p class="muted small">${state.notes.map(h).join(' ')}</p>`:''}
+  ${state.notes.length?`<details class="disclosure"><summary>Pack notes</summary><p class="muted small">${state.notes.map(h).join(' ')}</p></details>`:''}
   <div class="drawer-actions">
    ${allowed?`<button class="btn primary" data-action="print-pack">${icon('printer')}Print / save as PDF</button>
-    <button class="btn secondary" data-action="pack-json">${icon('download')}Export pack data (JSON)</button>`
+`
    :`<button class="btn primary" data-page="Settings">${icon('lock-keyhole')}Included with Pro — see plans</button>
     <p class="muted small">Your records and CSV exports are not affected by the plan.</p>`}
   </div>

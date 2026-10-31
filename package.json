@@ -1,1 +1,34 @@
-{"name":"hisaab-pk","version":"1.0.0","private":true,"type":"module","scripts":{"dev":"vite --host 127.0.0.1","build":"tsc --noEmit && npm run privacy:check && npm run iris:check && vite build","test":"node --import tsx --test tests/*.test.ts","preview":"vite preview --host 127.0.0.1","privacy":"node --import tsx tools/make-privacy.mjs","privacy:check":"node --import tsx tools/make-privacy.mjs --check","iris":"node --import tsx tools/make-iris-doc.mjs","iris:check":"node --import tsx tools/make-iris-doc.mjs --check"},"dependencies":{"@fontsource-variable/instrument-sans":"^5.3.0","@fontsource-variable/jetbrains-mono":"^5.3.0","decimal.js":"^10.6.0","lucide":"^0.468.0","zod":"^4.6.7"},"devDependencies":{"@types/node":"^22.18.0","tsx":"^4.20.6","typescript":"^5.9.3","vite":"^7.1.12"}}
+{
+  "name": "hisaab-pk",
+  "version": "1.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && npm run privacy:check && npm run iris:check && vite build && node tools/offline-build.mjs",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "preview": "vite preview --host 127.0.0.1",
+    "privacy": "node --import tsx tools/make-privacy.mjs",
+    "privacy:check": "node --import tsx tools/make-privacy.mjs --check",
+    "iris": "node --import tsx tools/make-iris-doc.mjs",
+    "iris:check": "node --import tsx tools/make-iris-doc.mjs --check",
+    "ai:serve": "node --import tsx local-server/index.ts",
+    "dev:assistant": "node tools/dev-assistant.mjs",
+    "test:service": "node --import tsx --test server/test/*.test.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/figtree": "^5.3.0",
+    "@mlc-ai/web-llm": "0.2.87",
+    "decimal.js": "^10.6.0",
+    "jspdf": "4.2.1",
+    "lucide": "^0.468.0",
+    "write-excel-file": "4.1.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12"
+  }
+}

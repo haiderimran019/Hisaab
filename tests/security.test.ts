@@ -93,7 +93,9 @@ test('a recovery code matches however it was typed', async () => {
  assert.equal(await hashRecovery(code.toLowerCase()),stored);
  assert.equal(await hashRecovery(code.replace('-',' ')),stored);
  assert.equal(await hashRecovery(code.replace('-','')),stored);
- assert.notEqual(await hashRecovery(code.slice(0,-1)+'X'),stored);
+ // Always alter the code: a random recovery code may already end in X.
+ const differentLast=code.endsWith('X')?'Y':'X';
+ assert.notEqual(await hashRecovery(code.slice(0,-1)+differentLast),stored);
  assert.equal(normalizeRecovery(' ab-cd '),'ABCD');
 });
 

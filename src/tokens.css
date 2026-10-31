@@ -1,0 +1,132 @@
+/* Current design contract: Muse messaging, Figtree, exact reference dark roles.
+   Old property names below are aliases only; no previous palette is retained. */
+:root {
+  --bg: #f7f8f7;
+  --surface: #ffffff;
+  --surface-raised: #eff2f0;
+  --border: #d7dcda;
+  --border-soft: #e5e9e7;
+  --text: #202624;
+  --text-muted: #58635d;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-ink: #ffffff;
+  --money-in: #237a43;
+  --alert: #815507;
+  --alert-surface: #fff8e8;
+  --alert-border: #d8bd84;
+  --avatar-bg: #e9dcc4;
+  --avatar-ink: #3a2e1e;
+  --interactive-ink: #1d4ed8;
+  --control-border: #7b8981;
+  --focus-ring: #2563eb;
+  --danger: #a3312c;
+  --scrim: rgb(0 0 0 / 28%);
+
+  --font-ui: 'Figtree Variable', Figtree, system-ui, sans-serif;
+  --font-display: var(--font-ui);
+  --sans: var(--font-ui);
+  --mono: var(--font-ui);
+  --text-caption: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 20px;
+  --text-xl: 28px;
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 20px;
+  --radius-bubble: 20px;
+  --radius-tail: 6px;
+  --radius-pill: 999px;
+  --radius: var(--radius-md);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: var(--space-6);
+  --space-8: var(--space-6);
+  --content-width: 720px;
+  --tap-target: 44px;
+  --motion-fast: 140ms;
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --shadow: transparent;
+  --shadow-lg: transparent;
+  --shadow-soft: none;
+
+  /* Compatibility for the existing records, forms, and security controls. */
+  --line: var(--border);
+  --line-strong: var(--control-border);
+  --ink: var(--text);
+  --ink-2: var(--text);
+  --muted: var(--text-muted);
+  --surface-2: var(--surface-raised);
+  --panel: var(--surface);
+  --brand: var(--interactive-ink);
+  --brand-hover: var(--accent-hover);
+  --on-brand: #ffffff;
+  --brand-dim: var(--border);
+  --brand-soft: var(--surface);
+  --message-in: var(--surface-raised);
+  --blue-soft: var(--surface);
+  --solid: var(--accent);
+  --on-solid: var(--accent-ink);
+  --solid-mark: var(--accent-ink);
+  --action-fill: var(--accent);
+  --action-hover: var(--accent-hover);
+  --on-action: var(--accent-ink);
+  --orange: var(--accent);
+  --orange-dark: var(--surface-raised);
+  --green: var(--money-in);
+  --ok-ink: var(--text-muted);
+  --ok-soft: var(--surface);
+  --ok-dim: var(--border);
+  --warn-ink: var(--alert);
+  --warn-soft: var(--alert-surface);
+  --danger-ink: var(--danger);
+  --danger-dim: var(--border);
+  --danger-soft: var(--surface);
+  --info: var(--text-muted);
+  --info-soft: var(--surface);
+  --ink-deep: var(--text);
+  --on-deep: var(--bg);
+
+  --paper: #ffffff;
+  --paper-ink: #202624;
+  --paper-muted: #58635d;
+  --paper-line: #d7dcda;
+  --paper-warning: #815507;
+  --paper-success: #202624;
+  --paper-danger: #a3312c;
+  color-scheme: light;
+}
+@supports (color: light-dark(white, black)) {
+  :root {
+    --bg: light-dark(#f7f8f7, #141515);
+    --surface: light-dark(#ffffff, #1e2020);
+    --surface-raised: light-dark(#eff2f0, #272a2a);
+    --border: light-dark(#d7dcda, #34383a);
+    --border-soft: light-dark(#e5e9e7, #2e3133);
+    --text: light-dark(#202624, #f3f3ef);
+    --text-muted: light-dark(#58635d, #a8adaa);
+    --money-in: light-dark(#237a43, #7bd69a);
+    --alert: light-dark(#815507, #e8bd68);
+    --alert-surface: light-dark(#fff8e8, #221f17);
+    --alert-border: light-dark(#d8bd84, #5a4a2a);
+    --interactive-ink: light-dark(#1d4ed8, #86aeff);
+    --control-border: light-dark(#7b8981, #7b8680);
+    --focus-ring: light-dark(#2563eb, #81acff);
+    --danger: light-dark(#a3312c, #f1a39b);
+    --on-brand: light-dark(#ffffff, #141515);
+    --scrim: light-dark(rgb(0 0 0 / 28%), rgb(0 0 0 / 44%));
+  }
+}
+:root[data-theme='dark'] { color-scheme: dark; }
+:root[data-theme='light'] { color-scheme: light; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) { color-scheme: dark; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion-fast: 0ms; }
+}

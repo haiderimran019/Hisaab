@@ -10,7 +10,12 @@ Pakistani independent workers need to reconcile foreign invoices, processor fees
 Pakistan resident individual freelancers. Desktop for bookkeeping, mobile for recording receipts. Track USD, GBP, EUR, AED and PKR; compare actual settlement with dated reference FX. Create printable invoices, record income/fees/withholding and expenses, filter/search, tax-year reporting and encrypted backup/restore. Demonstration data must be separate from the user's vault.
 
 ## Fixed visual commitments
-User supplied a dark logistics-app reference: near-black background, charcoal surfaces, orange controls, restrained rounded panels, crisp white text. Poppins is mandatory and self-hosted. Translate the reference to a financial workspace with persistent navigation, a prominent cash-flow view, reconciliation and a tax reserve panel. No shipping images, no invented payment integrations.
+Use the latest exact Muse messaging specification in docs/UX-REDESIGN.md:
+self-hosted Figtree throughout, the #141515 dark ground, blue #2563EB primary
+actions, rounded message/approval cards and the Urdu ح avatar badge. Light derives
+from the same roles. Follow the device theme, use 44px targets and cut redundant
+copy. DESIGN.md owns the token contract. The old dashboard, palettes, Poppins and
+serif face are superseded. Implement only the currently approved slice.
 
 ## Security and boundaries
 AES-GCM encrypted browser storage with PBKDF2-derived key, explicit passphrase setup, idle lock, export and delete controls, validated imports, escaped rendering, restrictive CSP and no analytics. Live FX makes an optional external request containing currency only, never ledger data. No bank passwords, CNIC, API keys or IRIS credentials collected. No claims of professional review or exhaustive legal coverage.
@@ -20,3 +25,9 @@ Pakistan only, versioned TY2026 and TY2027. Verify official FBR Ordinance and ra
 
 ## Delivery
 Plan and algorithms before implementation; working, tested application; source and security documentation; GitHub repository and matching profile-template section. Production commercial roadmap 8–10 weeks; subscription billing and provider OAuth require separate deployment credentials and operational readiness.
+
+## Public free preview, 31 October 2026
+
+Current implementation: chat and direct record previews; multilingual guided routing; confirmed record proposals and conflict-checked undo; deterministic analysis/saving estimates; local report document cards; encrypted history/profile/IRIS memory; calendar-file reminders; optional device Qwen3-1.7B and a user-triggered offline shell cache. No payment window. User memory is private context, not shared training.
+
+The public build does not yet provide Google sign-in, cross-device sync, Gmail access, hosted model compute or background notifications. Those require provider setup and authenticated deployment. Do not describe them as live, and do not claim all current FBR rules or verified IRIS codes.

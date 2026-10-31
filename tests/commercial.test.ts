@@ -102,7 +102,7 @@ test('the monthly import count only counts this calendar month', () => {
 
 test('a version 1 workspace migrates without losing a single record', () => {
  const v1={...blankWorkspace(),version:1} as Record<string,unknown>;
- delete v1.accounts;delete v1.batches;delete v1.lines;delete v1.license;delete v1.security;delete v1.review;
+ delete v1.conversation;delete v1.accounts;delete v1.batches;delete v1.lines;delete v1.license;delete v1.security;delete v1.review;
  const old=workspaceV1Schema.parse(v1);
  const legacy={...old,receipts:demo().receipts,expenses:demo().expenses,invoices:demo().invoices};
  const migrated=parseWorkspace(legacy);
@@ -120,7 +120,7 @@ test('a version 1 workspace migrates without losing a single record', () => {
 test('a version 2 workspace gains security and review state, keeping its statements', () => {
  const current=demo();
  const v2={...current,version:2} as Record<string,unknown>;
- delete v2.security;delete v2.review;
+ delete v2.conversation;delete v2.security;delete v2.review;
  const migrated=parseWorkspace(v2);
  assert.equal(migrated.version,3);
  assert.equal(migrated.lines.length,current.lines.length);

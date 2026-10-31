@@ -16,9 +16,14 @@ import {dirname,join} from 'node:path';
 const root=join(dirname(fileURLToPath(import.meta.url)),'..');
 const out=join(root,'docs','IRIS-MAP.md');
 
-const {IRIS_FIELDS,IRIS_MAP_VERSION,irisStatus,IRIS_DRAFT_WARNING}=await import('../src/iris.ts');
+const {IRIS_FIELDS,IRIS_MAP_VERSION,irisStatus,IRIS_DRAFT_WARNING,validateIrisMap,isVerifiedIrisField}=await import('../src/iris.ts');
 
+validateIrisMap();
 const status=irisStatus();
+for(const year of [...new Set(IRIS_FIELDS.map(f=>f.taxYear))].sort()){
+ const missing=IRIS_FIELDS.filter(f=>f.taxYear===year&&!isVerifiedIrisField(f));
+ console.log(`TY${year} missing verified codes (${missing.length}): ${missing.map(f=>f.id).join(', ')}`);
+}
 const forms=[...new Set(IRIS_FIELDS.map(f=>f.form))];
 const tick=f=>f.verified?'yes':'**no**';
 const cell=v=>v?String(v).replace(/\|/g,'\\|'):'—';
@@ -53,7 +58,7 @@ const lines=[
  '3. Copy the field’s code and its label **exactly as IRIS prints them**, including'
  +' any odd capitalisation or spacing.',
  '4. In `src/iris.ts`, set `code`, `irisLabel`, `verified:true`, and put your'
- +' initials and the date in `transcribedBy`.',
+ +' source (`IRIS screen` or `FBR return form SRO …`), `checkedOn` and `checkedBy`.',
  '5. Run `npm run iris` and commit the source and the regenerated worksheet together.',
  '',
  'Leave anything you could not find unverified. A blank is honest; a guess is not.'
@@ -71,11 +76,11 @@ for(const form of forms){
   '|---|---|---|---|---|---|');
  for(const f of group)
   lines.push(`| ${cell(f.label)} | ${tick(f)} | ${cell(f.code)} | ${cell(f.irisLabel)} `
-   +`| ${f.years.join(', ')} | ${cell(f.law)} |`);
+   +`| ${String(f.taxYear)} | ${cell(f.law)} |`);
  lines.push('');
  for(const f of group)
   lines.push(`**${f.label}**${f.required?'':' (optional)'} — \`${f.id}\`, from \`${f.figure}\`.`,
-   '',`Where to look: ${f.irisPath}`,'',f.note,'');
+   '',`Where to look: ${f.verified?f.irisPath:'Unverified — no filing instruction'}`,'',f.note,'');
 }
 
 lines.push('---','',

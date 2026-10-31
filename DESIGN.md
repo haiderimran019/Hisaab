@@ -1,52 +1,68 @@
 # Visual contract
 
-## Current direction (22 October 2026)
+## Current direction — exact Muse messaging spec, 31 October 2026
 
-**Light by default, dark on request.** This is a tool people open in daylight, on
-a cheap phone, often outdoors — and the Filing Pack it produces is ink on paper.
-Dark follows the device setting and can be forced either way from Settings; the
-choice lives in plain browser storage so it applies on the lock screen too.
+The user-supplied specification in `docs/UX-REDESIGN.md` replaces every earlier
+design plan. The current correction batch is awaiting user approval. It includes
+the shared screen audit, Filing Pack document and the additionally requested
+Analysis module with local chat routing. Review proposals only open records;
+financial save proposals and record undo remain in slice 4. The complete updated
+11-slice order is in docs/UX-REDESIGN.md. Do not advance without approval.
 
-**White first.** The page and every card are white or within a shade of it,
-separated by a hairline and the faintest lift rather than by blocks of grey.
-Rounded corners, generous padding, soft shadows in light and plain borders in
-dark, where shadows disappear.
+## Reference dark palette
 
-**Brand is a soft indigo; money keeps its own language.** An earlier palette used
-one orange for the primary action, the selected tab, a pending decision and an
-unexplained difference — when everything is the same colour, nothing reads as
-what it is. Indigo is the interface. Green arrives, red leaves, amber wants your
-attention, red is a problem. Those four never borrow the brand's colour and the
-brand never borrows theirs.
+All colours live in `src/tokens.css`. Existing names such as `--line`, `--ink`,
+`--muted` are compatibility aliases, not retained palettes.
 
-**Tokens, not hex.** Every surface, line, text and state colour is a semantic
-custom property defined once per theme (`--bg`, `--surface`, `--line`, `--ink`,
-`--muted`, `--brand`, `--on-brand`, `--warn-*`, `--danger-*`, `--ok-*`, `--info-*`,
-`--shadow`, `--radius*`). The stylesheet names roles, never colours, so a theme is a block of
-variables rather than a sweep through the file.
+| Role | Dark reference | Derived light |
+| --- | --- | --- |
+| `--bg` | `#141515` | `#f7f8f7` |
+| `--surface` | `#1e2020` | `#ffffff` |
+| `--surface-raised` | `#272a2a` | `#eff2f0` |
+| `--border` | `#34383a` | `#d7dcda` |
+| `--border-soft` | `#2e3133` | `#e5e9e7` |
+| `--text` | `#f3f3ef` | `#202624` |
+| `--text-muted` | `#a8adaa` | `#58635d` |
+| `--accent` | `#2563eb` | `#2563eb` |
+| `--money-in` | `#7bd69a` | `#237a43` |
+| `--alert` | `#e8bd68` | `#815507` |
+| `--alert-surface` | `#221f17` | `#fff8e8` |
+| `--alert-border` | `#5a4a2a` | `#d8bd84` |
+| `--avatar-bg` | `#e9dcc4` | `#e9dcc4` |
+| `--avatar-ink` | `#3a2e1e` | `#3a2e1e` |
 
-**The printed sheet is exempt.** `.invoice-paper`, the Filing Pack and everything
-inside `@media print` stay ink on paper in both themes. An invoice should not
-change colour because of a display preference.
+Dark is the reference theme. Follow the device by default and preserve an
+explicit saved override. Accent controls use white text. Incoming money and
+savings alone use green; unresolved records use the attention roles. Stronger
+control-boundary and focus roles support WCAG AA without thick decorative lines.
 
-Poppins throughout. Rounded corners through radius tokens, hairline borders, no gradients.
-Consistent Lucide stroke icons at one weight. No illustrative stock art. All
-example amounts explicitly belong to the Demo workspace.
+Figtree is self-hosted from `@fontsource-variable/figtree`, weights 400/500/600/700,
+for UI, headings and codes. Remove Poppins, serif and monospace dependencies. The
+avatar is a round beige badge containing ح, not character artwork. System font
+fallback supplies Urdu glyphs not covered by Figtree.
 
-## Layout
+- Bubbles: 20px, with a 6px tail corner. Cards: 20px. Small items: 12px.
+- Chips and buttons: fully rounded. Tap targets: at least 44px.
+- Spacing scale: 4 / 8 / 12 / 16 / 20 / 24px.
+- Hairline borders only. No shadows or gradients. Respect reduced motion.
+- Keep the 720px centered desktop column and responsive phone layout.
+- Keep the UI concise. Financial sources, eligibility gates and estimate limits
+  must remain reachable; avoid repetitive explanatory copy.
 
-Four destinations — Today, Money, Tax, Filing Pack — plus Settings and the
-privacy notice. Record types (income, expenses, invoices, statement lines) are
-tabs inside Money, not top-level navigation. One Add action is reachable from
-every page, and from the middle of the bar on a phone.
+`style.css` owns controls/forms/records, `studio.css` composition, `print.css`
+print layout. Financial functions are unchanged. The PDF document uses the
+existing Filing Pack data, generated locally by a pinned, lazy-loaded library.
+The shared header is menu · title · new chat. Theme belongs only in Settings.
+The composer is pinned on every screen. Show warnings as neutral text with an
+amber icon and action; no nested cards or main-screen accordions.
 
-Desktop: persistent left rail, quiet utility header. Phone: the same content with
-wide tables stacked into labelled cards rather than scrolled sideways.
+## Gate
 
-## History
+Run npm test and npm run build. Capture Home, active chat, review proposal,
+Filing Pack, Statements, Tax, Sidebar and Settings at 1440px desktop and 390px
+phone widths in light and dark. Audit Income, Expenses, Invoices and Privacy too.
+Check fonts, exact dark roles, contrast, targets, overflow, one primary action,
+actionable warnings and the absence of old colours. Stop for user approval.
 
-The original brief fixed charcoal surfaces with orange accents, taken from a
-supplied reference. That held until 22 October 2026, when the founder asked for a
-palette that reads welcoming, fresh and trustworthy. The charcoal/orange scheme is
-recorded in `PRODUCT.md` as the original commitment; this document supersedes it
-for colour. Poppins, the responsive contract and the honesty rules are unchanged.
+Money, tax, encryption and reconciliation logic must not change. Every later
+record proposal requires user confirmation. No cloud AI, keys or paid models.

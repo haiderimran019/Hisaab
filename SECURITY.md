@@ -1,6 +1,6 @@
 # Security policy and data boundaries
 
-Hisaab 1.0 is a local-first, single-person application. The public build has no configured Hisaab service, account sign-in, telemetry or bank/IRIS integrations. The optional Worker code can hold buyer and subscriber records, but has no API or database for customer financial records. Optional live reference FX calls `https://open.er-api.com/v6/latest/USD` with credentials omitted and no ledger fields. The provider necessarily receives network metadata such as the visitor's IP. Fonts and icons are bundled locally.
+Hisaab 1.2 is a local-first, single-person application. The public build has no configured Hisaab service, account sign-in, telemetry or bank/IRIS integrations. The optional Worker code can hold buyer and subscriber records, but has no API or database for customer financial records. Optional live reference FX calls `https://open.er-api.com/v6/latest/USD` with credentials omitted and no ledger fields. The provider necessarily receives network metadata such as the visitor's IP. Fonts and icons are bundled locally.
 
 ## Implemented controls
 
@@ -33,7 +33,7 @@ Hisaab 1.0 is a local-first, single-person application. The public build has no 
 - While a second factor is outstanding the decrypted workspace is held out of the UI entirely: nothing is rendered and no record is reachable until a code or recovery code is accepted. Locking, or pressing "start again", discards it.
 - Recovery codes are 8 random base32 codes shown exactly once. Only salted SHA-256 hashes are stored. A used code is removed and the workspace re-sealed **before** it opens, so an interrupted unlock cannot leave a code reusable. Comparison is case- and separator-insensitive so a code can be typed as it was written down.
 - Turning two-factor off clears the secret and every recovery hash.
-- In the public build, **Never touch the network** blocks the optional reference exchange-rate request and clears any cached quote. If a Hisaab service is configured in a future build, each service request needs its own consent and offline-control review before release.
+- In the public build, **Never touch the network** blocks optional reference exchange-rate requests, model downloads and localhost routing, and clears any cached quote. Already-loaded on-device inference is local. If a Hisaab service is configured in a future build, each service request needs its own consent and offline-control review before release.
 - **Hide amounts** blurs figures on Home. It is a shoulder-surfing convenience, not a security control: the values are present in the DOM.
 - Auto-lock is configurable at 1, 5, 15 or 30 minutes and is stored inside the encrypted workspace. Page-hide and other-tab locking are unchanged.
 
@@ -53,3 +53,36 @@ Concurrent tabs are not a supported editing workflow; another-tab writes trigger
 For public commercial use: commission a Pakistani accountant's review of tax branches and a security audit; verify deployed HTTP headers; define support/incident handling; obtain legal review of terms/privacy and processor relationships. Cloud accounts, shared workspaces and billing are not implemented.
 
 Report vulnerabilities privately through the repository owner's GitHub contact. Do not open public issues containing passphrases, real receipts or financial data.
+
+## Local Qwen3-1.7B development prototype (31 October 2026)
+
+The local development build can send the current question and up to six bounded
+recent messages to a localhost-only Qwen gateway. Ollama cloud features are
+disabled. No hosted model endpoint is configured in production builds; the separate public on-device option is described below. The gateway
+checks host, browser origin, content type, request size and concurrent requests;
+it is not an authenticated multi-user hosting service and must not be exposed
+through a public tunnel. It logs no message content. Model output is limited to
+validated routing/definition identifiers; free prose, numbers, IRIS codes and
+write actions are not accepted as authoritative output. The original financial
+functions calculate every figure. Never touch the network skips the model call.
+
+Lock and new-chat cancel pending model requests. Recent/all chat history and
+user-confirmed memory reuse the encrypted workspace. Memories are editable and
+deletable, record their user source and date, and do not override tax declarations
+or verified law. History is bounded by the existing vault size, 200 archives and
+120 messages per chat; overflow is refused rather than silently truncating chats.
+No shared model training, Google sign-in, remote sync, Gmail access or new
+notification delivery has been enabled. These need a separately reviewed account
+and consent boundary before those features can be publicly enabled.
+
+XLSX is generated locally by a pinned, lazy-loaded writer. Text cells cannot
+become formulas; CSV formula escaping is retained. Exported files are plaintext
+and remain outside the vault after the user downloads or shares them.
+
+## Public chat release (31 October 2026)
+
+Financial chat changes are snapshots validated by the original receipt, expense and invoice schemas. Confirmation checks the existing record against the proposed preimage; undo checks the postimage and refuses intervening changes or deletion of a statement-linked record. Proposals, activity, file snapshots, history and memories are encrypted by the existing vault, not held in a separate plaintext chat store.
+
+Optional browser Qwen3-1.7B runs in a Web Worker. Only an enumerated intent/definition is accepted; free-form model prose, model arithmetic and model-generated IRIS codes are discarded. The runtime is lazy-loaded after explicit download consent. Hugging Face and GitHub supply public model/runtime assets. No customer request is sent to them. Locking terminates the worker. No hosted inference, Google sign-in, sync or Gmail connection is configured.
+
+Offline app caches contain public code and fonts, not records. Never touch the network blocks optional app requests and model downloads. Loading/updating the website itself is a browser navigation and is not a network-isolation mechanism. Exported PDF/Excel/CSV/JSON files intentionally contain private financial data; download and native sharing remain explicit user actions.

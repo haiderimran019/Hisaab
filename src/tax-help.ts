@@ -1,0 +1,27 @@
+/* Reviewed application wording, never a model-generated legal fact. */
+import {ORDINANCE,RULE_VERSION,SOURCES} from './core';
+import {reply,type ChatMessage} from './conversation';
+import type {AssistantRoute} from './assistant-contract';
+const definitions={
+ gross:['Gross is the amount before processing fees and tax withholding. Keep the original currency and actual settlement rate with it.','Gross woh raqam hai jo fees aur withholding se pehle thi. Asal currency aur settlement rate bhi record karein.','گراس فیس اور ودہولڈنگ سے پہلے کی رقم ہے۔ اصل کرنسی اور وصولی کی شرح بھی ریکارڈ کریں۔'],
+ net:['Net is what reached you after the recorded processor fee, bank fee and withholding. Hisaab calculates it from the payment fields.','Net woh raqam hai jo processor fee, bank fee aur withholding ke baad aap ko mili. Hisaab yeh aap ke recorded fields se nikalta hai.','نیٹ وہ رقم ہے جو درج شدہ فیس اور ودہولڈنگ کے بعد آپ کو ملی۔ حساب اسے ادائیگی کی تفصیلات سے نکالتا ہے۔'],
+ fees:['Fees are the processor and bank charges recorded against a receipt. They are separate from tax withheld.','Fees processor aur bank ke charges hain. Yeh withheld tax se alag hain.','فیس پروسیسر اور بینک کے درج شدہ چارجز ہیں۔ یہ ودہولڈنگ ٹیکس سے الگ ہیں۔'],
+ withholding:['Withholding is tax deducted from a payment before you receive it. Whether it settles tax or can be credited depends on the applicable tax regime and evidence.','Withholding woh tax hai jo payment milne se pehle kaat liya gaya. Is ka final tax ya credit hona aap ke tax regime aur evidence par depend karta hai.','ودہولڈنگ وہ ٹیکس ہے جو رقم ملنے سے پہلے کاٹا گیا۔ اس کا حتمی ٹیکس یا قابلِ ایڈجسٹ کریڈٹ ہونا متعلقہ قانون اور ثبوت پر منحصر ہے۔'],
+ 'tax-year':['Pakistan’s normal tax year runs from July to June and is named for the year it ends. Choose the correct year before reviewing an estimate.','Pakistan ka aam tax year July se June tak hota hai aur end wale saal ke naam se jaana jata hai. Estimate se pehle sahi tax year chunain.','پاکستان کا عام ٹیکس سال جولائی سے جون تک ہوتا ہے اور اختتام والے سال سے پہچانا جاتا ہے۔ تخمینے سے پہلے درست سال منتخب کریں۔'],
+ pseb:['PSEB registration and a certificate covering your work are declarations that need evidence. Registration alone does not confirm every eligibility condition.','PSEB registration aur aap ke kaam ko cover karne wala certificate evidence ke saath check hota hai. Sirf registration har tax condition ko confirm nahin karti.','PSEB رجسٹریشن اور متعلقہ کام کا سرٹیفکیٹ ثبوت کے ساتھ جانچنا ضروری ہے۔ صرف رجسٹریشن تمام ٹیکس شرائط کی تصدیق نہیں کرتی۔'],
+ iris:["I don't have the verified IRIS code for this yet. If you can see it on your IRIS screen, tell me the code and label; open What I remember to save it only with your confirmation. It stays labelled From you, not verified.",'Mere paas is ka verified IRIS code abhi nahin hai. Agar aap apni IRIS screen par code aur label dekh sakte hain to batayein; What I remember mein sirf aap ki confirmation se save hoga aur From you, not verified likha rahega.','میرے پاس اس کا تصدیق شدہ IRIS کوڈ ابھی نہیں ہے۔ اپنی IRIS سکرین کا کوڈ اور لیبل بتائیں؛ What I remember میں صرف آپ کی تصدیق سے محفوظ ہوگا اور From you, not verified لکھا رہے گا۔'],
+ 'tax-return':['A Filing Pack is a worksheet for preparing and reviewing your return. Downloading a pack does not submit anything to FBR or IRIS.','Filing Pack return tayyar aur review karne ki worksheet hai. Pack download karne se FBR ya IRIS mein kuch submit nahin hota.','فائلنگ پیک گوشوارہ تیار کرنے اور جانچنے کی ورک شیٹ ہے۔ اسے ڈاؤن لوڈ کرنے سے FBR یا IRIS میں کچھ جمع نہیں ہوتا۔'],
+ 'business-expense':['A work expense is not automatically an allowed tax deduction. Record the business-use share and evidence, then review deductibility under the selected rules.','Har work expense khud-ba-khud tax deduction nahin banta. Business-use hissa aur evidence record karein, phir rules ke mutabiq review karein.','ہر کاروباری خرچ خودبخود قابلِ کٹوتی نہیں بنتا۔ کاروباری استعمال اور ثبوت درج کر کے متعلقہ قواعد کے تحت جانچ کریں۔']
+} as const;
+export function answerTerm(term:AssistantRoute['term'],language:ChatMessage['language']){if(term==='none')return '';const texts=definitions[term];return reply(language,texts[0],texts[1],texts[2]);}
+export function detectTerm(message:string):AssistantRoute['term']{
+ if(/iris|آئی رس|code kya|code.*export/i.test(message))return 'iris';
+ if(!/what|mean|explain|kya|matlab|samjha|کیا|مطلب|فرق/i.test(message))return 'none';
+ for(const [pattern,term] of [[/withhold|ودہولڈنگ/,'withholding'],[/gross|گراس/,'gross'],[/net|نیٹ/,'net'],[/pseb/,'pseb'],[/tax year|tax-year|ٹیکس سال/,'tax-year'],[/deduct|business expense/,'business-expense'],[/tax return|filing pack/,'tax-return'],[/fees|fee /,'fees']] as const)if(pattern.test(message))return term;
+ return 'none';
+}
+
+export function helpReference(term:AssistantRoute['term']){
+ const labels:Record<AssistantRoute['term'],string>={none:'',gross:'Bookkeeping definition',net:'Receipt settlement calculation',fees:'Recorded processing charges',withholding:'ss.168–169 · regime and evidence need review','tax-year':'s.74 · normal tax year',pseb:'s.154A · eligibility conditions apply',iris:'IRIS field code not verified','tax-return':'s.114 · return preparation','business-expense':'ss.20–21 · deductibility needs review'};
+ return {label:labels[term],version:RULE_VERSION,url:term==='iris'?SOURCES[3].url:ORDINANCE};
+}

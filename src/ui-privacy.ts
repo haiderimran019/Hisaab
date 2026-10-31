@@ -60,7 +60,7 @@ export function securityPanel(ctx:SecurityCtx){
 
    <div class="control">
     <div><b>Never touch the network</b>
-     <p>Turns off the optional reference exchange-rate lookup — the only outside request this app can make. With it on, nothing leaves this browser at all, not even your IP address to a rate provider.</p></div>
+     <p>Blocks optional reference-rate requests, local service requests and model downloads. Already-loaded on-device AI can still run without an outside request. Loading the website itself requires a connection unless you have saved the app for offline use.</p></div>
     <label class="switch"><input type="checkbox" id="offline-only" ${s.offlineOnly?'checked':''} ${ctx.demo?'disabled':''}><span></span></label>
    </div>
 
@@ -149,7 +149,7 @@ function reviewBody(ctx:SecurityCtx){
 export function privacyNotice(configured=serviceConfigured()){
  return `<section class="panel prose-panel">
   <h2>Privacy notice</h2>
-  <p class="muted small">Last updated 27 October 2026. Written to be read, not to protect us.</p>
+  <p class="muted small">Last updated 31 October 2026. Written to be read, not to protect us.</p>
 
   <h3>The short version</h3>
   <p>Your encrypted workspace runs in your browser. There is no server holding your books and no database of anybody's financial records that we could hand over, lose or sell. We cannot read your workspace or your passphrase. A document you deliberately send to a reader is the exception described below.</p>
@@ -157,19 +157,22 @@ export function privacyNotice(configured=serviceConfigured()){
 
   <h3>What is stored, and where</h3>
   <ul>
+   <li><b>Guided conversations and review proposals</b> run locally without a model or network request. The current conversation, archived chats, editable user-provided memories, file snapshots, financial proposals, activity decisions and pack notes are stored in the same encrypted workspace. The unsaved demo keeps these only in memory. Starting a new chat archives the previous one; locking clears decrypted data and cancels pending model requests. Analysis is recalculated from current records when opened. Memory is not shared model training. In the local development build only, the current request and up to six recent messages may go to your localhost Qwen3-1.7B service; no ledger snapshot is sent. It selects an allowed view or definition, and its free-form answers, calculations and IRIS codes are never trusted. The public build offers an optional Qwen3-1.7B WebGPU download. It runs on device, sees only the current request and up to six recent chat messages, and returns an allowed intent or definition. No conversation is uploaded. Loading downloads model weights from Hugging Face and runtime files from GitHub, exposing your IP address to those hosts; it requires a deliberate tap. Cached weights contain no user chats. Locking terminates the model worker. Never touch the network blocks model downloads and the local service request; already-loaded on-device inference needs no network.</li>
+   <li><b>Offline app shell:</b> Settings offers a deliberate download of the app shell to a browser cache. It contains public app code, never your financial records or chat. Export libraries are cached after first use; model weights remain a separate optional download. Clearing browser storage removes these caches too.</li>
    <li><b>On your device only:</b> your receipts, invoices, expenses, bank accounts, imported statement lines, attached receipt images, tax declarations, licence key and security settings. A random key encrypts the workspace; your passphrase protects that key. The encrypted result stays in this browser's local storage.</li>
    <li><b>Nowhere else:</b> there is no copy on any server of ours. Backups exist only where you save them.</li>
   </ul>
 
   <h3>Every outside request this app can make</h3>
-  <p>${configured?'There are four, and that is the complete list for this app. The optional Worker also has portal and review APIs, but this app has no screen that calls them.':'There is one, and that is the complete list.'}</p>
+  <p>${configured?'There are five, and that is the complete list for this app. The optional Worker also has portal and review APIs, but this app has no screen that calls them.':'There are two optional request types in this public build.'}</p>
   <ol>
+   <li><b>Optional on-device model download</b>, only when you choose Download and start in Settings: model files come from Hugging Face and the WebLLM runtime from GitHub. They see your IP address but receive no chats or ledger. Guided chat needs no model download. The local development build can also contact your configured localhost service with a bounded chat request.</li>
    <li><b>Reference exchange rates</b>, only when you press the button for them: your browser asks <code>open.er-api.com</code> for published rates. No financial data is sent, but like any web request the provider necessarily sees your IP address and the time you asked. <b>Never touch the network</b> in Privacy and security stops even this.</li>
    ${configured?`<li><b>A usage ping</b>, once a day, <b>only if you switch it on</b> — it is off until you do. It carries the date, which build you are running, and whether a licence is active. <b>No identifier of any kind is sent</b>, so we can count how often Hisaab is opened but can never tell one person from another, or link two days together.</li>
    <li><b>Your email address</b>, only if you type it into the key form and press the button. It is used to send your licence key, filing-deadline reminders and occasional product news. We never sell it, one click unsubscribes, and it is never connected to anything financial because we hold nothing financial. You do not need to give one at all — a key can reach you any way you like.</li>
    <li><b>A statement you choose to have read</b>, only when you pick a PDF or photo and confirm the warning on that screen. The file and your licence key go to the reading service named in the dialog. The file is used to transcribe proposed rows and is not stored by us; a per-licence counter records the request. You check and confirm the returned rows. Everything about this is off unless you start it, and CSV import never involves it.</li>`:''}
   </ol>
-  <p>Fonts and icons are served from the app itself. There are no trackers, no advertising pixels, no cookies and no third-party scripts of any kind.${configured?'':' This build has no usage counting and no sign-up form, because no Hisaab service is configured in it.'}</p>
+  <p>Fonts and icons are served from the app itself. There are no trackers, no advertising pixels, no cookies and no remotely hosted advertising or analytics scripts. The optional model runtime is listed above.${configured?'':' This build has no usage counting and no sign-up form, because no Hisaab service is configured in it.'}</p>
   <p><b>What never leaves, under any setting:</b> your income records, clients, invoices, expenses, bank accounts, statement lines, tax figures and passphrase. There is no endpoint that accepts them — the service refuses any request carrying such a field, and there is a test that fires realistic ones at it to prove it. The one exception you can create yourself is a document you deliberately send to be read, and that screen says so before anything moves.</p>
   <p><b>Hisaab is not connected to FBR, to your bank, or to any payment provider.</b> It cannot file a return, pay a tax, move money, or tell anyone anything about you. It is a private notebook that does arithmetic.</p>
 

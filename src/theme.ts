@@ -9,8 +9,8 @@ const KEY='hisaab.theme';
 export function storedTheme():Theme{
  try{
   const value=localStorage.getItem(KEY);
-  return value==='light'||value==='dark'||value==='system'?value:'light';
- }catch{return 'light';}
+  return value==='light'||value==='dark'||value==='system'?value:'system';
+ }catch{return 'system';}
 }
 export function applyTheme(theme:Theme){
  const root=document.documentElement;

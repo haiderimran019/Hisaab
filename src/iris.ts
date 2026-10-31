@@ -18,7 +18,7 @@
    To fill one in: open IRIS, start (do not submit) a return for the right tax
    year and taxpayer type, navigate to `irisPath`, and copy the field's code and
    its label **exactly as IRIS prints them**, then set `verified:true` and put
-   your initials and the date in `transcribedBy`. `npm run iris` regenerates the
+   the exact source in `source` (IRIS screen or FBR return form SRO …), the date in `checkedOn`, and your name in `checkedBy`. `npm run iris` regenerates the
    worksheet in docs/, and `npm run iris:check` fails if the two disagree.
 
    `irisPath` is a pointer written from the structure of the return, to tell you
@@ -29,7 +29,7 @@
 /** Bumped whenever a code changes, so a Filing Pack can say which map produced
     it. The `.draft` suffix is removed only when every required field is
     verified — `irisStatus()` is what decides that, not a human editing this. */
-export const IRIS_MAP_VERSION='IRIS-TY2026-TY2027.draft';
+export const IRIS_MAP_VERSION='IRIS-TY2026-TY2027.provenance-v2.draft';
 
 export type IrisForm=
  |'Return of Income — individual'      // s.114
@@ -39,6 +39,10 @@ export type IrisForm=
  |'Registration / profile';            // NTN, filer status, business profile
 
 export type IrisField={
+ taxYear:number;
+ source:string;
+ checkedOn:string;
+ checkedBy:string;
  /** Hisaab's own stable key. Never changes, even if IRIS renumbers. */
  id:string;
  /** What Hisaab calls this figure, in the words the app uses. */
@@ -68,10 +72,11 @@ export type IrisField={
  note:string;
 };
 
-const F=(f:Omit<IrisField,'irisLabel'|'code'|'verified'|'transcribedBy'>):IrisField=>
- ({...f,irisLabel:'',code:'',verified:false,transcribedBy:''});
+type IrisTemplate=Omit<IrisField,'taxYear'>;
+const F=(f:Omit<IrisTemplate,'irisLabel'|'code'|'verified'|'transcribedBy'|'source'|'checkedOn'|'checkedBy'>):IrisTemplate=>
+ ({...f,irisLabel:'',code:'',verified:false,transcribedBy:'',source:'',checkedOn:'',checkedBy:''});
 
-export const IRIS_FIELDS:IrisField[]=[
+const IRIS_TEMPLATES:IrisTemplate[]=[
 
  /* ── What the export regime needs (s.154A) ───────────────────────────────
     The largest group, because it is what most of Hisaab's customers earn. The
@@ -194,11 +199,22 @@ export const IRIS_FIELDS:IrisField[]=[
   note:'Filing the return is itself one of the conditions for s.154A final-tax treatment, which is why Hisaab asks the filer to confirm it rather than assuming it.'}),
 ];
 
+export const IRIS_FIELDS:IrisField[]=IRIS_TEMPLATES.flatMap(f=>f.years.map(taxYear=>({...f,taxYear})));
+
+export function isVerifiedIrisField(f:IrisField){
+ const validDate=/^\d{4}-\d{2}-\d{2}$/.test(f.checkedOn)&&Number.isFinite(Date.parse(f.checkedOn))&&new Date(f.checkedOn).toISOString().slice(0,10)===f.checkedOn;
+ return f.verified&&!!f.code.trim()&&!!f.label.trim()&&!!f.irisLabel.trim()&&!!f.irisPath.trim()&&
+  (f.source==='IRIS screen'||/^FBR return form SRO \S/.test(f.source))&&validDate&&!!f.checkedBy.trim();
+}
+export function validateIrisMap(fields:IrisField[]=IRIS_FIELDS){
+ for(const f of fields)if(f.verified&&!isVerifiedIrisField(f))throw Error(`TY${f.taxYear} ${f.id}: verified IRIS entries require code, label, source, checkedOn and checkedBy.`);
+}
+
 /* ── What the app may and may not say about this map ──────────────────────── */
 
-export const irisField=(id:string)=>IRIS_FIELDS.find(f=>f.id===id)??null;
+export const irisField=(id:string,year=2027)=>IRIS_FIELDS.find(f=>f.id===id&&f.taxYear===year)??null;
 
-export const irisFieldsFor=(year:number)=>IRIS_FIELDS.filter(f=>f.years.includes(year));
+export const irisFieldsFor=(year:number)=>IRIS_FIELDS.filter(f=>f.taxYear===year);
 
 /** The honest state of the map. `ready` is false while any required field is
     unverified, and the app uses that to decide whether it may present itself as
@@ -206,8 +222,8 @@ export const irisFieldsFor=(year:number)=>IRIS_FIELDS.filter(f=>f.years.includes
 export function irisStatus(year?:number){
  const fields=year?irisFieldsFor(year):IRIS_FIELDS;
  const required=fields.filter(f=>f.required);
- const verified=fields.filter(f=>f.verified);
- const missing=required.filter(f=>!f.verified);
+ const verified=fields.filter(isVerifiedIrisField);
+ const missing=required.filter(f=>!isVerifiedIrisField(f));
  return {
   total:fields.length,
   verified:verified.length,
@@ -227,28 +243,30 @@ export type IrisDestination=
     An unverified field returns `known:false` with a pointer and a reason, never
     a code. That is what stops a half-filled map being rendered as though it
     were finished — the type makes the caller handle both cases. */
-export function irisDestination(id:string):IrisDestination|null{
- const f=irisField(id);
+export function irisDestination(id:string,year=2027,fields=IRIS_FIELDS):IrisDestination|null{
+ const f=fields.find(f=>f.id===id&&f.taxYear===year);
  if(!f)return null;
- if(f.verified&&f.code)
+ if(isVerifiedIrisField(f))
   return {known:true,code:f.code,irisLabel:f.irisLabel,form:f.form,law:f.law,path:f.irisPath};
- return {known:false,form:f.form,law:f.law,path:f.irisPath,
-  why:'The exact IRIS field code for this figure has not been transcribed from a real return yet, so Hisaab will not print one. The section of law and the part of the return are correct; find the field there and check the label.'};
+ return {known:false,form:f.form,law:f.law,path:'',
+  why:"I don't have the verified IRIS code for this yet. It has not been transcribed with complete source evidence."};
 }
 
 /** One line for the Filing Pack, phrased for whoever is reading it. */
-export function irisGuidance(id:string){
- const d=irisDestination(id);
+export function irisGuidance(id:string,year=2027){
+ const d=irisDestination(id,year);
  if(!d)return '';
  return d.known
   ?`IRIS: ${d.form} — field ${d.code} “${d.irisLabel}” (${d.law})`
-  :`IRIS: ${d.form} — ${d.path} (${d.law}). Field code not yet confirmed; check the label in IRIS.`;
+  :`IRIS field code not yet confirmed. I don’t have the verified IRIS code for this yet.`;
 }
 
 /** A sentence the pack and the UI must both carry while the map is a draft, so
     nobody mistakes a pointer for a filing instruction. */
 export const IRIS_DRAFT_WARNING=
- 'Hisaab names the part of the return and the section of law for every figure, '
- +'but the exact IRIS field codes have not been transcribed from a live return yet. '
- +'Use this to find your way around the return, not as a filing instruction, and '
- +'check every box against what IRIS shows you.';
+ "I don't have the verified IRIS code for this yet. The exact field codes have not been transcribed with verified provenance. Use this worksheet for review, not as a filing instruction; check the tax-year-specific screen in IRIS with your practitioner.";
+
+export function userIrisCode(code:string,label:string){
+ if(!code.trim()||!label.trim())throw Error('Tell me both the code and label.');
+ return {code:code.trim(),label:label.trim(),verified:false as const,source:'From you, not verified' as const};
+}

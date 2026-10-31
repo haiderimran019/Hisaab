@@ -1,3 +1,4 @@
+import {conversationSchema} from './conversation';
 import Decimal from 'decimal.js';
 import { z } from 'zod';
 Decimal.set({ precision: 32, rounding: Decimal.ROUND_HALF_UP });
@@ -20,7 +21,7 @@ const rate = z.string().regex(/^\d{1,5}(\.\d{1,6})?$/).refine(v=>new Decimal(v).
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>!Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0,10)===v,'Invalid date');
 export const currencies = ['USD','GBP','EUR','AED','PKR'] as const;
 export const categories = ['it-export','service-export','domestic','social-media','other'] as const;
-export const receiptSchema = z.object({id:z.string().uuid(),date,client:text,description:text,currency:z.enum(currencies),gross:amount,fee:amount,rate,bankFee:amount,withheld:amount,rail:z.enum(['Payoneer','Wise','Bank transfer','Upwork','Fiverr','Other']),category:z.enum(categories),evidence:text,banking:z.boolean(),taxBase:amount,baseConfirmed:z.boolean()}).strict().superRefine((v,c)=>{
+export const receiptSchema = z.object({id:z.string().uuid(),date,client:text,description:text,currency:z.enum(currencies),gross:amount,fee:amount,rate,bankFee:amount,withheld:amount,rail:z.enum(['Payoneer','Wise','Bank transfer','Upwork','Fiverr','JazzCash','Easypaisa','Raast','Other']),category:z.enum(categories),evidence:text,banking:z.boolean(),taxBase:amount,baseConfirmed:z.boolean()}).strict().superRefine((v,c)=>{
  if(new Decimal(v.gross).mul(v.rate).mul(100).gt(Number.MAX_SAFE_INTEGER))c.addIssue({code:'custom',message:'Converted amount exceeds safe precision',path:['gross']});
  if(new Decimal(v.fee).gt(v.gross)) c.addIssue({code:'custom',message:'Processor fee cannot exceed gross income',path:['fee']});
  if(v.baseConfirmed&&['it-export','service-export'].includes(v.category)&&new Decimal(v.taxBase).lte(0)) c.addIssue({code:'custom',message:'Confirmed export tax base must exceed zero',path:['taxBase']});
@@ -37,7 +38,7 @@ export type Receipt=z.infer<typeof receiptSchema>;
 export type Expense=z.infer<typeof expenseSchema>;
 export type Invoice=z.infer<typeof invoiceSchema>;
 export type Workspace=z.infer<typeof workspaceSchema>;
-export const blankWorkspace=():Workspace=>({version:3,accounts:[],batches:[],lines:[],license:{key:'',activatedAt:'',trialStarted:''},security:blankSecurity(),review:{certificate:''},profile:{confirmedYear:2027,name:'',province:'Punjab',resident:true,pseb:false,returnFiled:false,statementsFiled:false,salesReturns:false,noForeignCredit:false,noOptOut:false,simpleBusiness:false,otherIncome:false,deductionsReviewed:false,provinceReviewed:false},receipts:[],expenses:[],invoices:[]});
+export const blankWorkspace=():Workspace=>({version:3,conversation:{messages:[],packNotes:{},threads:[],activeId:'',memory:[],activity:[],irisMemory:[]},accounts:[],batches:[],lines:[],license:{key:'',activatedAt:'',trialStarted:''},security:blankSecurity(),review:{certificate:''},profile:{confirmedYear:2027,name:'',province:'Punjab',resident:true,pseb:false,returnFiled:false,statementsFiled:false,salesReturns:false,noForeignCredit:false,noOptOut:false,simpleBusiness:false,otherIncome:false,deductionsReviewed:false,provinceReviewed:false},receipts:[],expenses:[],invoices:[]});
 export const money=(v:Decimal.Value)=>{const d=new Decimal(v).toDecimalPlaces(2);if(!d.isFinite()||d.mul(100).abs().gt(Number.MAX_SAFE_INTEGER))throw Error('Amount exceeds safe PKR precision. Split or review this workspace.');return d.toNumber();};
 export const sum=(values:Decimal.Value[])=>money(values.reduce<Decimal>((a,b)=>a.plus(b),new Decimal(0)));
 export function receiptMath(r:Receipt){const gross=new Decimal(r.gross).mul(r.rate),fees=new Decimal(r.fee).mul(r.rate).plus(r.bankFee);return {gross:money(gross),fees:money(fees),withheld:money(r.withheld),net:money(gross.minus(fees).minus(r.withheld))};}
@@ -130,7 +131,7 @@ export const workspaceV2Schema=z.object({
 }).strict();
 
 export const workspaceSchema=z.object({
- version:z.literal(3),profile:profileSchema,security:securitySchema,review:reviewSchema,
+ version:z.literal(3),profile:profileSchema,security:securitySchema,review:reviewSchema,conversation:conversationSchema.default({messages:[],packNotes:{},threads:[],activeId:'',memory:[],activity:[],irisMemory:[]}),
  receipts:z.array(receiptSchema).max(2000),expenses:z.array(expenseSchema).max(2000),invoices:z.array(invoiceSchema).max(2000),
  accounts:z.array(accountSchema).max(40),batches:z.array(batchSchema).max(400),lines:z.array(lineSchema).max(8000),
  license:licenseStateSchema

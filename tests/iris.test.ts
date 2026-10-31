@@ -8,7 +8,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {IRIS_FIELDS,IRIS_MAP_VERSION,IRIS_DRAFT_WARNING,irisField,irisFieldsFor,
- irisStatus,irisDestination,irisGuidance} from '../src/iris.ts';
+ irisStatus,irisDestination,irisGuidance,validateIrisMap,isVerifiedIrisField,userIrisCode} from '../src/iris.ts';
 import {estimate} from '../src/core.ts';
 import {demo} from '../src/demo.ts';
 
@@ -43,7 +43,7 @@ test('an unverified field yields a pointer and a reason, never a code', () => {
   const d=irisDestination(f.id)!;
   assert.equal(d.known,false,f.id);
   assert.ok(!('code' in d),`${f.id} leaked a code field`);
-  assert.ok(d.path.length>10,`${f.id} must still say where to look`);
+  assert.equal(d.path,'',`${f.id} must not present a draft IRIS path as verified`);
   assert.ok(d.law.length>3,`${f.id} must still cite the law`);
   assert.match(d.why,/not been transcribed/);
 
@@ -82,7 +82,7 @@ test('every figure a filer has to type is in the map', () => {
  for(const needed of ['it-export-base','service-export-base','export-withheld',
   'domestic-turnover','business-expenses','business-profit','domestic-withheld'])
   assert.ok(ids.includes(needed),`${needed} is missing from the map`);
- assert.equal(new Set(ids).size,ids.length,'ids must be unique; they are stable keys');
+ assert.equal(new Set(IRIS_FIELDS.map(f=>f.id+':'+f.taxYear)).size,IRIS_FIELDS.length,'field and tax year must be unique');
 });
 
 test('the wealth statement is named, because a return without one is not filed', () => {
@@ -134,4 +134,17 @@ test('an unknown id is null rather than an empty-looking answer', () => {
 test('the draft warning says what the map is for and what it is not', () => {
  assert.match(IRIS_DRAFT_WARNING,/not as a filing instruction/);
  assert.match(IRIS_DRAFT_WARNING,/have not been transcribed/);
+});
+
+test('every verified entry requires source, checkedOn and checkedBy; invalid claims fail the build guard',()=>{
+ validateIrisMap();
+ const f={...irisField('it-export-base')!,verified:true,code:'TEST-ONLY',irisLabel:'Synthetic test field',source:'IRIS screen',checkedOn:'2026-10-31',checkedBy:'test fixture'};
+ assert.equal(isVerifiedIrisField(f),true);
+ for(const key of ['source','checkedOn','checkedBy'] as const)assert.throws(()=>validateIrisMap([{...f,[key]:''}]));
+ assert.equal(irisDestination(f.id,2026,[f]),null);
+ assert.equal(irisDestination(f.id,2027,[{...f,source:''}])!.known,false);
+});
+test('user supplied codes stay explicitly unverified and never enter the verified catalogue',()=>{
+ const before=JSON.stringify(IRIS_FIELDS),c=userIrisCode('USER-EXAMPLE','User provided label');
+ assert.equal(c.source,'From you, not verified');assert.equal(c.verified,false);assert.equal(JSON.stringify(IRIS_FIELDS),before);
 });
