@@ -13,3 +13,5 @@ hisaab-signing-key.json
 
 server/node_modules/
 server/.wrangler/
+supabase/.temp/
+supabase/.branches/

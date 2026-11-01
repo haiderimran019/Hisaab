@@ -31,3 +31,9 @@ Plan and algorithms before implementation; working, tested application; source a
 Current implementation: chat and direct record previews; multilingual guided routing; confirmed record proposals and conflict-checked undo; deterministic analysis/saving estimates; local report document cards; encrypted history/profile/IRIS memory; calendar-file reminders; optional device Qwen3-1.7B and a user-triggered offline shell cache. No payment window. User memory is private context, not shared training.
 
 The public build does not yet provide Google sign-in, cross-device sync, Gmail access, hosted model compute or background notifications. Those require provider setup and authenticated deployment. Do not describe them as live, and do not claim all current FBR rules or verified IRIS codes.
+
+## Connected company workspaces, 1 November 2026
+
+The owner approved a Free Supabase project and a quota-limited free hosted model. Customer data is company-scoped at the database level with authoritative memberships and Owner/Editor/Viewer roles. The browser keeps the original encryption and financial functions. Cloud access transfers encrypted envelopes; account and company metadata remain separate. Generic Web Push reminders use the Hisaab name and round avatar; the OS controls popup typography.
+
+Google OAuth, provider credentials and actual end-to-end delivery must be verified before connected features are called ready. Gmail, invitations, per-member key sharing and self-service cloud deletion are not implemented. Company workspaces do not imply corporate tax support; the tax calculator remains the existing individual-freelancer scenario register.

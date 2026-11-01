@@ -1,88 +1,58 @@
 # Security policy and data boundaries
 
-Hisaab 1.2 is a local-first, single-person application. The public build has no configured Hisaab service, account sign-in, telemetry or bank/IRIS integrations. The optional Worker code can hold buyer and subscriber records, but has no API or database for customer financial records. Optional live reference FX calls `https://open.er-api.com/v6/latest/USD` with credentials omitted and no ledger fields. The provider necessarily receives network metadata such as the visitor's IP. Fonts and icons are bundled locally.
+Hisaab is a local-first finance application with optional Supabase accounts, company-scoped encrypted sync, a hosted finance assistant and opt-in background reminders. Google credentials and the hosted model key must be configured by the owner before those routes are available. See the generated [privacy notice](docs/PRIVACY.md).
 
-## Implemented controls
+## Encryption and local controls
 
-- Only encrypted envelopes are stored under `hisaab.encrypted.v1` in browser localStorage. Unencrypted demo data is held in memory, never copied into a newly created vault.
-- AES-256-GCM encryption and authenticated decryption through WebCrypto. A random 256-bit data key encrypts the workspace with a fresh IV on every write. PBKDF2-SHA256 at 600,000 iterations derives a wrapping key from the passphrase and a random salt. The data key is held as raw bytes in memory while unlocked so it can be wrapped for another unlock method; it is cleared from application references on lock, but JavaScript cannot guarantee memory erasure. Passphrase length is 12–256 characters; there is no server recovery service. Older encrypted workspaces migrate on unlock, and the passphrase unlock method is always retained.
-- Five-minute inactivity lock and page-hide lock. Lock clears UI, print previews, workspace references, attachment references and key references. JavaScript garbage collection is not a guarantee of cryptographic memory erasure. Other-tab storage changes lock the active workspace.
-- Strict Zod schemas and bounded inputs for dates, positive FX, amounts, categories, record counts, imported encrypted envelopes and decrypted workspaces. 8 MB import cap; 3 MB plaintext workspace cap; receipt upload limited to 1 MB PNG/JPEG/PDF, MIME and signature checked. Attachments are encrypted with the workspace and downloaded as files, never executed or embedded as active PDF content.
-- All stored user text is escaped before HTML templating. No user HTML rendering. CSV cells are quoted and leading formula characters are neutralized. Generated financial downloads are explicitly user initiated.
-- No external scripts. Restrictive CSP in HTML; optional security headers in `public/_headers`. Header support is host dependent and must be verified on the actual host. The HTML CSP cannot enforce `frame-ancestors`; the HTTP header is required for it.
-- Confirmation for workspace replacement and record deletion; typed DELETE for local workspace erasure. Only the app's own storage key is removed. No global `localStorage.clear()`.
-- Lockfile, reproducible builds and CI with least privilege. No credentials or financial fixtures in the repository.
-- Tax years, legal references and explicit unsupported-case gates reduce the risk of misrepresenting a scenario as a complete liability.
+The existing WebCrypto implementation is unchanged: a random 256-bit data key encrypts the workspace with AES-256-GCM and a fresh IV; PBKDF2-SHA256 at 600,000 iterations derives a passphrase wrapping key with a random salt. Passphrases are 12–256 characters, never sent to a server, and have no publisher reset. The passphrase unlocker is always retained. Older workspaces migrate through the existing unlock path.
 
-## Statement import, licence keys and the Filing Pack
+Records, attachments, chats, personal memory, proposals and file snapshots remain inside that encrypted workspace. Device passkeys wrap the same key; cloud envelopes retain only the passphrase slot, excluding device labels and credential IDs. A company member still needs the workspace passphrase to decrypt a downloaded copy. Automatic per-member key distribution is not implemented.
 
-- Statement CSVs are parsed entirely in the browser. The optional document-reading path can send a PDF or photo to a named reader only after explicit consent, a configured service, and licence verification. It is disabled in the public build. A spreadsheet is refused rather than parsed as text.
-- Import files are capped at 4 MB and 8,000 rows; a workspace holds at most 8,000 statement lines, 40 accounts and 400 import batches, inside the existing 3 MB plaintext workspace cap.
-- Imported text is validated by strict Zod schemas and escaped before templating on every surface, including the printed Filing Pack. A pack-level test asserts that statement text cannot inject markup or script.
-- A row that cannot be read is listed with its row number and original text; it is never dropped silently, netted, or given a guessed date, sign or amount. A row carrying both a debit and a credit is reported rather than reconciled away.
-- Duplicate detection is a reversible flag, not a deletion. Duplicate lines are excluded from reconciliation arithmetic and shown as such.
-- Reconciliation reports the unexplained difference. The application has no code path that closes a difference by creating a balancing entry.
-- Licence keys are ECDSA P-256 signatures over a plain payload, verified with WebCrypto against a public key compiled into the bundle. Normal app use verifies a key offline. The optional document-reading request sends the key to the Worker so it can verify the paid entitlement and enforce a per-licence quota; that path is disabled in the public build.
-- **Licence enforcement is client-side and is not a security control.** The gate can be removed by anyone willing to edit the published bundle, and the app states this in Settings. The signing private key is held outside the repository; see `docs/LICENSING.md` for its handling and leak recovery.
-- An absent, invalid or expired key never blocks reading, editing, exporting or backing up a customer's own records.
+Page-hide, inactivity and other-tab writes lock the workspace. Locking clears application/key references, print previews, generated-file caches and on-device model workers, cancels hosted requests and pauses sync. JavaScript cannot guarantee cryptographic memory erasure. An unlocked or compromised browser, malicious extension or same-origin injected script can read decrypted information.
 
-## Two-factor codes, recovery and privacy switches
+Optional TOTP is a lock-screen control, not additional encryption strength: its secret is inside the encrypted workspace. Recovery codes are single-use salted hashes and are consumed before opening. A backup plus its passphrase can be decrypted independently. Hide amounts is a shoulder-surfing convenience; values remain in the DOM.
 
-- Two-factor uses RFC 6238 TOTP (SHA-1, 6 digits, 30-second step, one step of drift either side), computed in the browser with WebCrypto and verified against the RFC's published test vectors. Any standard authenticator app works. No phone number, email address or network request is involved at any point.
-- **The second factor is a lock-screen control, not added encryption strength, and the app says so where it is set up.** The shared secret lives inside the encrypted workspace, so it can only be checked after the passphrase has already decrypted it. It stops someone who has watched or guessed the passphrase from opening the workspace in this browser; it does not stop someone holding both a backup file and the passphrase. The passphrase protects the data key at rest; a registered passkey would provide another way to unwrap that same key, but its browser UI is not yet available.
-- While a second factor is outstanding the decrypted workspace is held out of the UI entirely: nothing is rendered and no record is reachable until a code or recovery code is accepted. Locking, or pressing "start again", discards it.
-- Recovery codes are 8 random base32 codes shown exactly once. Only salted SHA-256 hashes are stored. A used code is removed and the workspace re-sealed **before** it opens, so an interrupted unlock cannot leave a code reusable. Comparison is case- and separator-insensitive so a code can be typed as it was written down.
-- Turning two-factor off clears the secret and every recovery hash.
-- In the public build, **Never touch the network** blocks optional reference exchange-rate requests, model downloads and localhost routing, and clears any cached quote. Already-loaded on-device inference is local. If a Hisaab service is configured in a future build, each service request needs its own consent and offline-control review before release.
-- **Hide amounts** blurs figures on Home. It is a shoulder-surfing convenience, not a security control: the values are present in the DOM.
-- Auto-lock is configurable at 1, 5, 15 or 30 minutes and is stored inside the encrypted workspace. Page-hide and other-tab locking are unchanged.
+## Company isolation and sync
 
-## The practitioner review tick
+Customer transport tables carry `company_id`: encrypted workspaces, memberships, push subscriptions and AI quota context. Companies and membership records control access. RLS never uses user-editable profile metadata to assign roles.
 
-- A certificate is an ECDSA P-256 signature over a payload naming the reviewer, their registration, the tax year, the review date and a SHA-256 fingerprint of the pack's figures.
-- Verification requires the reviewer's public key to be compiled into the release. `REVIEWERS` is empty in this build, so no tick can be displayed by anyone, including the publisher. A tick the publisher can mint for itself carries no information.
-- The fingerprint covers every receipt, expense, account, statement line and profile declaration in scope for the year, sorted by id so array order cannot change it, plus the name on the pack. Any change to a figure or declaration moves the pack to "review out of date" automatically.
-- A tick means the holder of that reviewing key signed off those figures. It is not an FBR approval, and Hisaab does not itself verify that the reviewer's registration is genuine — that check belongs to whoever onboards the reviewer. Reviewing private keys belong to the reviewer and are generated outside the repository; see `docs/LICENSING.md` and `tools/make-review.mjs`.
+- Owners and Editors can save their company's envelope; Viewers have read-only access.
+- Membership changes apply on the next database request, independently of token age.
+- Membership writes are not granted to frontend users. The narrow private company-creation function checks `auth.uid()`, generates a fresh company ID and creates its owner membership atomically. It cannot grant access to an existing company.
+- Private definer helpers exist only for company creation and self-role lookup, with fixed empty search paths and revoked public/anonymous execution. Their purpose is explicit bootstrap/recursion control, not a general permission bypass.
+- Company IDs on existing workspace/subscription rows are immutable.
+- Saves use an expected-revision RPC. Stale versions are rejected. The local encrypted save remains intact on a cloud conflict; the UI requires review before replacing it with the cloud copy.
+- A sync binding is scoped to user, company, revision and a hash of the public wrapping metadata. Changing company pauses sync. This non-financial binding and account session live in tab session storage; decrypted chats/records do not.
+- Sync transfers the existing encrypted workspace as one bounded envelope. It is not an incremental multi-editor CRDT. Large receipt-heavy workspaces consume bandwidth and need explicit limits. Conflicts do not merge automatically.
 
-## Limits and operational requirements
+Shared service configuration is in an unexposed private schema. Push private keys and dispatcher tokens are readable only by the server role. AI rate counters cannot be read or changed by authenticated frontend users. Public keys are publishable; service-role, OAuth and AI secrets never belong in the client or Git.
 
-A compromised browser, same-origin injected script, malicious extension or unlocked computer can read decrypted data. Browser clearing removes the vault, and storage is not synchronized across devices. Losing the passphrase loses access. Backups must be kept by the user; financial CSV and worksheet exports are plaintext. A private hosted Site protects page access but is not a substitute for vault encryption. This code has not undergone an independent penetration test or professional tax review.
+The hosted SQL tests exercise real database RLS with rolled-back synthetic users: cross-company reads/writes, owner/editor/viewer behavior, self-escalation, forged user metadata, revoked membership, company reassignment, stale revisions and access to private configuration. They do not replace an independent security audit or full signed-in browser testing.
 
-Concurrent tabs are not a supported editing workflow; another-tab writes trigger a lock. Do not assume atomic multi-tab transactions. Receipt-heavy books should export and archive evidence before reaching browser quota. No bank tokens, CNIC, government login or private credentials should be entered into free-text fields.
+## AI boundary
 
-For public commercial use: commission a Pakistani accountant's review of tax branches and a security audit; verify deployed HTTP headers; define support/incident handling; obtain legal review of terms/privacy and processor relationships. Cloud accounts, shared workspaces and billing are not implemented.
+Guided tools and the original deterministic functions produce financial amounts and tax estimates. Optional local Qwen routing accepts only enumerated intents/definitions. Optional hosted chat is authenticated using Auth.getUser, checks company membership through RLS, and has a server-owned rate counter.
 
-Report vulnerabilities privately through the repository owner's GitHub contact. Do not open public issues containing passphrases, real receipts or financial data.
+The hosted route accepts a bounded current question and six short recent messages only after a privacy preview. Known clients/account references and identifiers are redacted; users must check for missed details. It does not receive a ledger snapshot, attachment, passphrase or confirmed memory. Company IDs and session tokens authenticate the gateway and are not forwarded to the model.
 
-## Local Qwen3-1.7B development prototype (31 October 2026)
+Hosted chat has no write tools. Financial changes require user-confirmed proposals through existing schemas. Confirmation compares the original record; undo compares the confirmed result and refuses intervening changes or deletion of statement-linked records. Model JSON is checked and numerical claims/private-reasoning markup are rejected. This does not make arbitrary model prose a verified financial source.
 
-The local development build can send the current question and up to six bounded
-recent messages to a localhost-only Qwen gateway. Ollama cloud features are
-disabled. No hosted model endpoint is configured in production builds; the separate public on-device option is described below. The gateway
-checks host, browser origin, content type, request size and concurrent requests;
-it is not an authenticated multi-user hosting service and must not be exposed
-through a public tunnel. It logs no message content. Model output is limited to
-validated routing/definition identifiers; free prose, numbers, IRIS codes and
-write actions are not accepted as authoritative output. The original financial
-functions calculate every figure. Never touch the network skips the model call.
+The gateway is restricted to free model variants with paid fallbacks disallowed and no-data-collection/zero-retention provider routing requested. If no eligible provider is available, the request fails closed. Capacity is limited by both Hisaab and the provider account. The code does not log prompt/reply bodies or train shared weights on private chats. Provider and hosting metadata processing remain subject to their policies.
 
-Lock and new-chat cancel pending model requests. Recent/all chat history and
-user-confirmed memory reuse the encrypted workspace. Memories are editable and
-deletable, record their user source and date, and do not override tax declarations
-or verified law. History is bounded by the existing vault size, 200 archives and
-120 messages per chat; overflow is refused rather than silently truncating chats.
-No shared model training, Google sign-in, remote sync, Gmail access or new
-notification delivery has been enabled. These need a separately reviewed account
-and consent boundary before those features can be publicly enabled.
+IRIS codes, labels and paths are shown as verified only with exact tax-year provenance, source, checked date and reviewer. No real catalogue codes have been invented. User-supplied memory is separate and labelled From you, not verified. Tax scenarios retain their existing eligibility gates.
 
-XLSX is generated locally by a pinned, lazy-loaded writer. Text cells cannot
-become formulas; CSV formula escaping is retained. Exported files are plaintext
-and remain outside the vault after the user downloads or shares them.
+## Notifications
 
-## Public chat release (31 October 2026)
+Web Push is opt-in and requires a signed-in company member. Subscription rows are user- and company-scoped. The sender requires a separate private dispatcher token, permits only known browser push-service hosts to prevent arbitrary URL fetching, and removes expired or non-member subscriptions. Scheduled notices contain generic check-ins, never balances or client names. Notification popup typography is controlled by the operating system.
 
-Financial chat changes are snapshots validated by the original receipt, expense and invoice schemas. Confirmation checks the existing record against the proposed preimage; undo checks the postimage and refuses intervening changes or deletion of a statement-linked record. Proposals, activity, file snapshots, history and memories are encrypted by the existing vault, not held in a separate plaintext chat store.
+Turning on Never touch the network first revokes the current device's reminder subscription when possible, then cancels/blocks optional app cloud requests. Other devices have separate preferences. Browser navigation, updates and browser-managed push infrastructure are not a network-isolation mechanism.
 
-Optional browser Qwen3-1.7B runs in a Web Worker. Only an enumerated intent/definition is accepted; free-form model prose, model arithmetic and model-generated IRIS codes are discarded. The runtime is lazy-loaded after explicit download consent. Hugging Face and GitHub supply public model/runtime assets. No customer request is sent to them. Locking terminates the worker. No hosted inference, Google sign-in, sync or Gmail connection is configured.
+## Input, files and deployment
 
-Offline app caches contain public code and fonts, not records. Never touch the network blocks optional app requests and model downloads. Loading/updating the website itself is a browser navigation and is not a network-isolation mechanism. Exported PDF/Excel/CSV/JSON files intentionally contain private financial data; download and native sharing remain explicit user actions.
+Strict schemas cap the decrypted workspace at 3 MB, encrypted imports at 8 MB, receipt uploads at 1 MB and statement imports at 4 MB/8,000 rows. Receipt MIME/signature checks, escaped user text, CSV formula escaping, typed Excel string cells and existing deterministic reconciliation are retained. Statement text is data, never instructions. Unexplained differences are never filled with balancing entries.
+
+Plain PDF/Excel/CSV/JSON exports intentionally contain financial data and remain outside encryption once downloaded/shared. Offline caches contain public app assets only. The CSP permits the named Supabase service, optional rate provider and consented model downloads; host HTTP-header support must still be verified on the deployed host. No browser API secret is required.
+
+This code has not undergone an independent penetration test or professional Pakistani tax review. Supabase free-tier limits and third-party AI quotas do not provide unlimited production capacity. Company member invitations, automated key distribution, Gmail imports and self-service cloud company deletion remain future workflows. No bank credentials, CNIC or IRIS password should be entered into chat.
+
+Report vulnerabilities privately through the repository owner's GitHub contact; never post credentials or real financial records in public issues.

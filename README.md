@@ -49,10 +49,14 @@ Tax answers use the checked application rule register for supported TY 2026/2027
 
 See [SECURITY.md](SECURITY.md), [privacy](docs/PRIVACY.md), [tax rules](docs/TAX-RULES.md), [IRIS map](docs/IRIS-MAP.md), and [design](DESIGN.md).
 
-## Account-connected features still require setup
+## Connected web backend
 
-**Google sign-in, encrypted cross-device sync, Gmail imports, hosted Qwen inference and background push/email reminders are not live.** No sign-in button pretends that they work. They need an owned Google OAuth project and a deployed authenticated backend; Gmail may also require restricted-scope verification. Google identity alone must never decrypt a vault: a new device still needs an unlock/recovery secret.
+Hisaab now has a provisioned Free Supabase project with company-scoped RLS, Owner/Editor/Viewer database roles, encrypted sync RPCs, a hosted finance gateway and a scheduled Web Push sender. Account, company and notification controls are in Settings and the sidebar. The frontend uses only a public publishable key; private credentials remain in server secrets.
 
-The existing `server/` is a separately configured Worker service. It currently rejects customer financial payloads and must not be reused as a plaintext ledger store. Its tests run separately. There is no configured public customer-data service in this release.
+Google OAuth is enabled and the OpenRouter key is saved as `AI_API_KEY`. The configured OAuth endpoint redirects to Google with the expected callback; a full user login still needs browser verification. The server pins a free, zero-retention-eligible model route and refuses paid fallbacks. Live model requests currently fail with upstream HTTP 429 from the serving provider; hosted AI is not ready merely because its key is configured. Guided local tools continue to work. The free provider account has a shared daily quota, so this is a limited pilot, not unlimited public compute.
 
-The reusable policy is in `knowledge/assistant-policy.md`; actual runtime routing is in `src/assistant-contract.ts`, checked explanations in `src/tax-help.ts`, calculations in `src/core.ts`, and IRIS provenance in `src/iris.ts`. Improve these using reviewed sources and synthetic multilingual examples, never automatic training on private chats or bank mail.
+See [cloud setup and boundaries](docs/CLOUD-SETUP.md). Company member invitations, per-member key distribution, Gmail imports and self-service cloud company deletion remain unfinished. Company grouping does not add corporate/AOP tax calculations: the existing tax rules support selected individual freelancer scenarios only.
+
+The legacy `server/` Worker is a separate optional service and continues rejecting plaintext ledger fields. The new Supabase service stores encrypted envelopes and separate account/membership/delivery metadata. Never put personal secrets in the browser bundle or Git.
+
+The editable assistant policy is in `supabase/functions/finance-chat/policy.ts`; local routing is in `src/assistant-contract.ts`, checked explanations in `src/tax-help.ts`, calculations in `src/core.ts`, and verified IRIS retrieval in `src/iris-assistant.ts`. Improve these using reviewed sources and synthetic multilingual tests. Private history is context, not automatic shared-model training.

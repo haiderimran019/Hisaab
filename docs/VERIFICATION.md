@@ -140,3 +140,9 @@
 The five-minute lock is implemented and reviewed; a full timed idle soak is not recorded. Receipt upload uses file MIME/signature/size validation, but all file types have not been exercised in the browser. Downloaded backups are verified in Node crypto tests and browser restoration; arbitrary malformed backup fuzzing is not exhaustive. Live FX depends on provider/network availability and is not a price guarantee. No real bank transfer, FBR submission, email, subscription payment or government registry verification was performed.
 
 Independent accountant review, province-specific tax coverage, accessibility audit, penetration testing, live HTTP-header enforcement and production commercial readiness remain outstanding. Do not describe this release as covering every Pakistani tax or as a certified filing system. Browser checks were performed through the provided computer-use interface; the repository does not claim an automated full-browser regression suite.
+
+## Added 1 November 2026 — connected company workspace pilot
+
+See [CLOUD-SETUP.md](CLOUD-SETUP.md) for live verification evidence and remaining launch blockers. 219 app tests and 67 legacy service tests pass, production build passes and the production dependency audit reports no vulnerabilities. Hosted JWT tests passed cross-company isolation, encrypted save/load/unlock and explicit revision conflicts. Transactional database tests passed Owner/Editor/Viewer permissions, role escalation rejection and revoked-member isolation. Test Auth accounts were removed afterward.
+
+Google configuration and authorize redirect were checked, but a complete browser login/cross-device UI flow was not. The hosted model is configured but currently returns upstream HTTP 429; it must not be presented as working inference. A zero-recipient push dispatch is not a device delivery test. Gmail, member invitations, cloud self-service deletion and verified live IRIS mappings remain unfinished.

@@ -66,3 +66,7 @@ actionable warnings and the absence of old colours. Stop for user approval.
 
 Money, tax, encryption and reconciliation logic must not change. Every later
 record proposal requires user confirmation. No cloud AI, keys or paid models.
+
+## Connected settings update
+
+The owner authorized full-product work and accepted the previous browser checks. Account/company selection, privacy previews and reminder controls use the existing tokens and small Settings surfaces. The round ح avatar is also used in the PWA/notification assets. Notifications outside the app use OS typography. Company switching pauses sync and does not silently replace local books.

@@ -1,0 +1,13 @@
+project_id = "Hisaab"
+
+[auth]
+site_url = "https://haiderimran019.github.io/Hisaab/"
+additional_redirect_urls = ["https://haiderimran019.github.io/Hisaab/"]
+
+[functions.finance-chat]
+# Authentication is performed in the handler using Auth.getUser and company RLS.
+verify_jwt = false
+
+[functions.send-reminders]
+# GET exposes only a public VAPID key. POST requires a private dispatch token.
+verify_jwt = false

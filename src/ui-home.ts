@@ -69,5 +69,5 @@ export function homeView(ctx:Ctx,estimated:{reserve:number;balance:number;reason
  <button class="home-card money-arrived" data-chat-prompt="Reached you this month"><span>Reached you this month</span>${amount(net)}<small>after ${h(pkr(fees))} lost to fees</small>${icon('arrow-up-right')}</button>
  <button class="home-card" data-chat-prompt="What do I owe in tax?"><span>Keep aside for tax</span>${amount(estimated.balance)}<small>TY ${ctx.year} · ${estimated.itRate}% IT export scenario · estimate</small>${icon('arrow-up-right')}</button>
  <button class="home-card" data-chat-prompt="Show problems needing attention"><span>Needs your attention</span><strong>${pending} unclassified lines</strong><small>${gaps?`${gaps} account balances to check`:'Account balances reconcile'}</small>${icon('arrow-up-right')}</button>
- </div></section>`;
+ </div>${ctx.demo?'<button class="btn primary wide" data-action="create-vault">Start my private workspace</button><p class="note">Free preview. Demo records are not copied. Account and encrypted sync are in Settings.</p>':''}</section>`;
 }

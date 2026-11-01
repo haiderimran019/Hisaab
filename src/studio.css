@@ -191,3 +191,4 @@ main{margin-top:var(--space-5);padding-bottom:calc(112px + env(safe-area-inset-b
 .records-insight{padding:var(--space-5) 0;margin-bottom:var(--space-5)}.records-insight h2{font-size:var(--text-lg)}.income-insight .bar-track>span{background:var(--money-in)}
 .chat-sections{display:flex;gap:var(--space-2);overflow-x:auto;padding:var(--space-2) 0;scrollbar-width:none}.chat-sections .source-chip{flex:0 0 auto}.quiet-totals dd{overflow-wrap:anywhere}.document-card h3{overflow-wrap:anywhere}.document-card .btn+.btn{margin-top:var(--space-2)}
 .page-today{padding-bottom:calc(252px + env(safe-area-inset-bottom))}
+.privacy-preview{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--font-ui);font-size:var(--text-sm);padding:var(--space-4);border:1px solid var(--border);border-radius:var(--radius-sm);max-height:40dvh;overflow:auto}
